@@ -106,7 +106,7 @@ def ComputeLambda(population: List[Protein], patternSeq: str,
                 if protein.Lambda != None:
                     continue
                 protein.Lambda = float(inf.readline())
-                
+
         os.remove(computeLambdaOuf)
         os.remove(computeLambdaInf)
         
@@ -151,12 +151,15 @@ resultFileName = config['COMPUTING']['ResultFileName']
 computedProteins = dict()
 if os.path.exists(computedProteinsPath):
     computedProteins = ReadComputedProteins(computedProteinsPath)
+
+bestProtein, iteration, stopStep = None, 1, 1
 population = GeneratePopulation(popSize, genes)
 ComputeLambda(population, patternSequence, computedProteins, computeLambdaOuf, computeLambdaInf)
 SaveComputing(population, computedProteins, computedProteinsPath)
-
-bestProtein, stopStep = copy.deepcopy(GetBestProtein(population)), 1
+bestProtein = copy.deepcopy(GetBestProtein(population))
+print(f'Iter: {iteration}. The best lambda: {bestProtein.Lambda}')
 while stopStep < 5:
+    iteration += 1
     population = Selection(population, evalParam)
     Crossover(population, genes, crosProb)
     Mutation(population, genes, mutProb)
@@ -164,12 +167,12 @@ while stopStep < 5:
     SaveComputing(population, computedProteins, computedProteinsPath)
 
     curBestProtein = GetBestProtein(population)
-    print(stopStep, curBestProtein.Lambda, bestProtein.Lambda)
     if curBestProtein.Lambda <= bestProtein.Lambda:
         stopStep += 1
     else:
         bestProtein = copy.deepcopy(curBestProtein)
         stopStep = 0
+    print(f'Iter: {iteration}. The best lambda: {bestProtein.Lambda}')
 
 population = sorted(population, key=lambda protein: protein.Lambda, reverse=True)
 with open(resultFileName, 'w') as ouf:
