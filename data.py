@@ -14,27 +14,17 @@ class Gene():
         return x
 
 class Protein():
-    def __init__(self, sequence: str, variance: str, lmd: float):
-        self.Sequence = list(sequence)
-        self.Variance = dict(variance)
-        self.Lambda = lmd
-
-    def GenerateRandomVariance(self, bros: [Gene]):
+    def __init__(self, bros):
         self.Variance = dict()
-        for b in bros:
-            x = b.SelectAminoacid()
-            self.Variance[b.Position] = x
-        self.UpdateSequence()
+        for gene in bros:
+            self.Variance[gene.Position] = gene.SelectAminoacid()
+        self.Lambda = None
 
-    def UpdateSequence(self):
+    def GetSequence(self, patternSequence: str) -> str:
+        patternSequence = list(patternSequence)
         for (position, aminoacid) in self.Variance.items():
-            self.Sequence[position - 1] = aminoacid
-
-    def GetSequence(self) -> str:
-        sequence = ''
-        for c in self.Sequence:
-            sequence += c
-        return sequence
+            patternSequence[position - 1] = aminoacid
+        return ''.join(patternSequence)
     
     def GetVariance(self) -> str:
         variance = ''

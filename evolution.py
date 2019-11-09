@@ -1,44 +1,27 @@
 import random
 import numpy as np
 import copy
+import configparser
 from data import Gene, Protein
 
-TMP_SEQUENCE =  "MLMTVFSSAPELALLGSTFAQVDPSNLSVSDSLTYGQFNL" \
-                "VYNAFSFAIAAMFASALFFFSAQALVGQRYRLALLVSAIV" \
-                "VSIAGYHYFRIFNSWDAAYVLENGVYSLTSEKFNDAYRYV" \
-                "DWLLTVPLLLVETVAVLTLPAKEARPLLIKLTVASVLMIA" \
-                "GYPGEISDDITTRIIWGTVSTIPFAYILYVLWVELSRSLV" \
-                "RQPAAVQTLVRNMRWLLLLSWGVYPIAYLLPMLGVSGTSA" \
-                "AVGVQVGYTIADVLAKPVFGLLVFAIALVKTKADQESSEP" \
-                "HAAIGAAANKSGGSLIS"
-TMP_VARIANCE =  [(1,"D"), (2,"T"), (3,"L"), (4,"W")]
-i = 0
-
-def ReadBros(path: str):
+def ReadBros(config) -> [Gene]:
     bros = list()
-    with open(path) as file:
-        for line in file.readlines():
-            x = line.split(' ')
-            gene = Gene()
-            gene.Position = int(x[0])
-            gene.Variants = x[1]
-            gene.CrosProb = float(x[2])
-            gene.MutProb  = float(x[3])
-            bros.append(gene)
+    for (position, params) in config.items():
+        gene = Gene()
+        params = params.split(' ')
+        gene.Position = position
+        gene.Variants = params[0]
+        gene.CrosProb = float(params[1])
+        gene.MutProb  = float(params[2])
+        bros.append(gene)
     return bros
 
 def GeneratePopulation(n: int, bros: [Gene]) -> [Protein]:
     proteins = list()
     for _ in range(n):
-        proteins.append(GenerateProtein(bros))
+        protein = Protein(bros)
+        proteins.append(protein)
     return proteins
-
-def GenerateProtein(bros: [Gene]) -> Protein:
-    global i
-    protein = Protein(TMP_SEQUENCE, TMP_VARIANCE, i)
-    i+=1
-    protein.GenerateRandomVariance(bros)
-    return protein
 
 def Crossover(population: [Protein], bros: [Gene], crosProb: float):
     proteinsForCross = list()
@@ -60,8 +43,6 @@ def Crossover(population: [Protein], bros: [Gene], crosProb: float):
                 continue
             pos = gene.Position
             a.Variance[pos], b.Variance[pos] = b.Variance[pos], a.Variance[pos]
-        a.UpdateSequence()
-        b.UpdateSequence()
 
 def Mutation(population: [Protein], bros: [Gene], mutProb: float):
     proteinsForMut = list()
@@ -78,7 +59,6 @@ def Mutation(population: [Protein], bros: [Gene], mutProb: float):
                 continue
             pos = gene.Position
             protein.Variance[pos] = gene.SelectAminoacid()
-        protein.UpdateSequence()
 
 def Eval(evalParam: float, n: int) -> float:
     return evalParam * pow(1 - evalParam, n - 1)
@@ -98,15 +78,30 @@ def Selection(population: [Protein], evalParam: float) -> [Protein]:
     
     return newPopulation
 
+def ComputeLambda(population: [Protein]) -> Protein:
+    for protein in population:
+        protein.Lambda = random.randint(400,500)
 
-bros = ReadBros('brosVariance')
-population = GeneratePopulation(2, bros)
-Crossover(population, bros, 1)
-Mutation(population, bros, 1)
-population = Selection(population, 0.05)
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+bros = ReadBros(config['BROS'])
+crosProb = float(config['PARAMS']['CrosProb'])
+mutProb = float(config['PARAMS']['MutProb'])
+evalParam = float(config['PARAMS']['EvalParam'])
+popSize = int(config['PARAMS']['PopSize'])
+
+population = GeneratePopulation(popSize, bros)
+ComputeLambda(population)
+for _ in range(10):
+    Crossover(population, bros, crosProb)
+    Mutation(population, bros, mutProb)
+    ComputeLambda(population)
+    population = Selection(population, evalParam)
+
 population = sorted(population, key=lambda protein: protein.Lambda, reverse=True)
 for p in population:
-    print(p.GetSequence())
+    # print(p.GetSequence(TMP_SEQUENCE))
     print(p.GetVariance())
     print(p.Lambda)
     print()
