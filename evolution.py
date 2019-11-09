@@ -1,7 +1,6 @@
 import random
 import copy
 import time
-import configparser
 import os
 import shutil
 from typing import List, Dict
@@ -131,51 +130,3 @@ def ReadComputedProteins(path: str) -> Dict[str, float]:
 def GetBestProtein(population: List[Protein]) -> Protein:
     bestProtein = max(population, key=lambda p: p.Lambda)
     return bestProtein
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-genes = ReadGenes(config['GENES'])
-patternSequence = config['TEMPLATE']['Sequence']
-
-crosProb = float(config['PARAMS']['CrosProb'])
-mutProb = float(config['PARAMS']['MutProb'])
-evalParam = float(config['PARAMS']['EvalParam'])
-popSize = int(config['PARAMS']['PopSize'])
-
-computeLambdaInf = config['COMPUTING']['ComputeLambdaInf']
-computeLambdaOuf = config['COMPUTING']['ComputeLambdaOuf']
-computedProteinsPath = config['COMPUTING']['ComputedProteinsFileName']
-resultFileName = config['COMPUTING']['ResultFileName']
-
-computedProteins = dict()
-if os.path.exists(computedProteinsPath):
-    computedProteins = ReadComputedProteins(computedProteinsPath)
-
-bestProtein, iteration, stopStep = None, 1, 1
-population = GeneratePopulation(popSize, genes)
-ComputeLambda(population, patternSequence, computedProteins, computeLambdaOuf, computeLambdaInf)
-SaveComputing(population, computedProteins, computedProteinsPath)
-bestProtein = copy.deepcopy(GetBestProtein(population))
-print(f'Iter: {iteration}. The best lambda: {bestProtein.Lambda}')
-while stopStep < 5:
-    iteration += 1
-    population = Selection(population, evalParam)
-    Crossover(population, genes, crosProb)
-    Mutation(population, genes, mutProb)
-    ComputeLambda(population, patternSequence, computedProteins, computeLambdaOuf, computeLambdaInf)
-    SaveComputing(population, computedProteins, computedProteinsPath)
-
-    curBestProtein = GetBestProtein(population)
-    if curBestProtein.Lambda <= bestProtein.Lambda:
-        stopStep += 1
-    else:
-        bestProtein = copy.deepcopy(curBestProtein)
-        stopStep = 0
-    print(f'Iter: {iteration}. The best lambda: {bestProtein.Lambda}')
-
-population = sorted(population, key=lambda protein: protein.Lambda, reverse=True)
-with open(resultFileName, 'w') as ouf:
-    for protein in population:
-        line = f'{protein.Lambda}\n{protein.GetSequence(patternSequence)}\n\n'
-        ouf.write(line)
