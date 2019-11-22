@@ -18,11 +18,27 @@ def ReadGenes(config) -> List[Gene]:
         genes.append(gene)
     return genes
 
-def GeneratePopulation(popSize: int, genes: List[Gene]) -> List[Protein]:
+def GeneratePopulation(popSize: int, genes: List[Gene],
+                       computeLambdaOuf: str, computeLambdaInf: str) -> List[Protein]:
     proteins = list()
     for _ in range(popSize):
         protein = Protein(genes)
         proteins.append(protein)
+
+    if os.path.exists(computeLambdaOuf):
+        with open(computeLambdaOuf, 'r') as f:
+            lines = list(filter(None, [line.strip() for line in f]))
+            for (protein, line) in zip(proteins, lines):
+                protein.UpdateVarianceFromSequence(genes, line)
+        os.remove(computeLambdaOuf)
+
+    if os.path.exists(computeLambdaInf):
+        with open(computeLambdaInf, 'r') as f:
+            lines = list(filter(None, [line.strip() for line in f]))
+            for (protein, line) in zip(proteins, lines):
+                protein.Lambda = float(line)
+        os.remove(computeLambdaInf)
+
     return proteins
 
 def Crossover(population: List[Protein], genes: List[Gene], crosProb: float) -> None:
@@ -37,7 +53,7 @@ def Crossover(population: List[Protein], genes: List[Gene], crosProb: float) -> 
         proteinsForCross = proteinsForCross[0:-1]
 
     random.shuffle(proteinsForCross)
-    
+
     for a, b in zip(proteinsForCross[0:-1:2], proteinsForCross[1::2]):
         for gene in genes:
             r = random.random()
@@ -63,9 +79,12 @@ def Eval(evalParam: float, n: int) -> float:
     return evalParam * pow(1 - evalParam, n - 1)
 
 def Selection(population: List[Protein], evalParam: float) -> List[Protein]:
+    for protein in population:
+        if protein.Lambda == None:
+            return population
+
     newPopulation = list()
     popSize = len(population)
-    
     population = sorted(population, key=lambda protein: protein.Lambda, reverse=True)
     q = list(map(lambda n: sum(map(lambda m: Eval(evalParam, m), range(1, n + 1))), range(1, popSize + 1)))
     for _ in range(popSize):
@@ -74,10 +93,10 @@ def Selection(population: List[Protein], evalParam: float) -> List[Protein]:
         while r > q[n]:
             n += 1
         newPopulation.append(copy.deepcopy(population[n]))
-    
+
     return newPopulation
 
-def ComputeLambda(population: List[Protein], patternSeq: str, 
+def ComputeLambda(population: List[Protein], patternSeq: str,
                   computedProteins: Dict[str, float],
                   computeLambdaOuf: str, computeLambdaInf: str) -> None:
     needComputing = False
@@ -94,9 +113,9 @@ def ComputeLambda(population: List[Protein], patternSeq: str,
                 if protein.Lambda != None:
                     continue
                 seq = protein.GetSequence(patternSeq)
-                ouf.write(seq + '\n\n')
+                ouf.write(seq + '\n')
         os.rename('.tempfile', computeLambdaOuf)
-        
+
         while not os.path.exists(computeLambdaInf):
             time.sleep(1)
 
@@ -108,15 +127,16 @@ def ComputeLambda(population: List[Protein], patternSeq: str,
 
         os.remove(computeLambdaOuf)
         os.remove(computeLambdaInf)
-        
+
 def SaveComputing(population: List[Protein], computedProteins: Dict[str, float], path: str) -> None:
     with open(path, 'a') as ouf:
         for protein in population:
             variance = protein.GetVariance()
-            if variance in computedProteins:
+            lmb = protein.Lambda
+            if variance in computedProteins or lmb == None:
                 continue
-            computedProteins[variance] = protein.Lambda
-            line = f'{variance}\t{protein.Lambda}\n'
+            computedProteins[variance] = lmb
+            line = f'{variance}\t{lmb}\n'
             ouf.write(line)
 
 def ReadComputedProteins(path: str) -> Dict[str, float]:
