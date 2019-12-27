@@ -34,7 +34,9 @@ while step < stop_step:
     crossover(population, genes, cros_prob)
     mutation(population, genes, mut_prob)
     compute_lambda(population, pattern_sequence, computed_proteins, compute_lmb_ouf, compute_lmb_inf)
-    population += best_proteins
+    
+    population = sorted(population, key=lambda protein: protein.mlambda, reverse=True)
+    population = best_proteins + population[0:pop_size-len(best_proteins)]
 
     cur_best_protein = get_best_protein(population)
     if best_variance == None:

@@ -82,12 +82,12 @@ def selection(population: List[Protein], eval_param: float) -> (List[Protein], L
             print('WARNING: selection is missing. The population contains uncomputed lambda.')
             return [], population
 
-    best_proteins, other_proteins = list(), list()
+    best_proteins, new_population = list(), list()
     population = sorted(population, key=lambda protein: protein.mlambda, reverse=True)
     for _ in range(3):
         protein = population.pop(0)
-        protein = copy.deepcopy(protein)
-        best_proteins.append(protein)
+        best_proteins.append(copy.deepcopy(protein))
+        new_population.append(copy.deepcopy(protein))
 
     pop_size = len(population)
     q = list(map(lambda n: sum(map(lambda m: evaluate(eval_param, m), range(1, n + 1))), range(1, pop_size + 1)))
@@ -95,11 +95,11 @@ def selection(population: List[Protein], eval_param: float) -> (List[Protein], L
         n, r = 0, random.uniform(0, q[-1])
         while r > q[n]:
             n += 1
-        protein = copy.deepcopy(population[n])
-        other_proteins.append(protein)
-    random.shuffle(other_proteins)
+        protein = population[n]
+        new_population.append(copy.deepcopy(protein))
+    random.shuffle(new_population)
 
-    return best_proteins, other_proteins
+    return best_proteins, new_population
 
 def compute_lambda(population: List[Protein], pattern_seq: str,
                   computed_proteins: Dict[str, float],
