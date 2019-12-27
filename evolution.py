@@ -47,9 +47,8 @@ def crossover(population: List[Protein], genes: List[Gene], cros_prob: float) ->
     proteins_for_cross = list()
     for protein in population:
         r = random.random()
-        if r > cros_prob:
-            continue
-        proteins_for_cross.append(protein)
+        if r < cros_prob:
+            proteins_for_cross.append(protein)
 
     if len(proteins_for_cross) % 2 == 1:
         proteins_for_cross = proteins_for_cross[0:-1]
@@ -59,39 +58,36 @@ def crossover(population: List[Protein], genes: List[Gene], cros_prob: float) ->
     for a, b in zip(proteins_for_cross[0:-1:2], proteins_for_cross[1::2]):
         for gene in genes:
             r = random.random()
-            if r > gene.cros_prob:
-                continue
-            pos = gene.position
-            x, y = a.variance[pos], b.variance[pos]
-            a.update_variance(pos, y)
-            b.update_variance(pos, x)
+            if r < gene.cros_prob:
+                pos = gene.position
+                x, y = a.variance[pos], b.variance[pos]
+                a.update_variance(pos, y)
+                b.update_variance(pos, x)
 
 def mutation(population: List[Protein], genes: List[Gene], mut_prob: float) -> None:
     for protein in population:
         r = random.random()
-        if r > mut_prob:
-            continue
-        for gene in genes:
-            r = random.random()
-            if r > gene.mut_prob:
-                continue
-            protein.update_variance(gene.position, gene.select_aminoacid())
+        if r < mut_prob:
+            for gene in genes:
+                r = random.random()
+                if r < gene.mut_prob:
+                    protein.update_variance(gene.position, gene.select_aminoacid())
 
 def evaluate(eval_param: float, n: int) -> float:
     return eval_param * pow(1 - eval_param, n - 1)
 
-def selection(population: List[Protein], eval_param: float) -> List[Protein]:
+def selection(population: List[Protein], eval_param: float) -> (List[Protein], List[Protein]):
     for protein in population:
         if protein.mlambda == None:
             print('WARNING: selection is missing. The population contains uncomputed lambda.')
-            return population
+            return [], population
 
-    new_population = list()
+    best_proteins, other_proteins = list(), list()
     population = sorted(population, key=lambda protein: protein.mlambda, reverse=True)
     for _ in range(3):
         protein = population.pop(0)
         protein = copy.deepcopy(protein)
-        new_population.append(protein)
+        best_proteins.append(protein)
 
     pop_size = len(population)
     q = list(map(lambda n: sum(map(lambda m: evaluate(eval_param, m), range(1, n + 1))), range(1, pop_size + 1)))
@@ -100,11 +96,10 @@ def selection(population: List[Protein], eval_param: float) -> List[Protein]:
         while r > q[n]:
             n += 1
         protein = copy.deepcopy(population[n])
-        new_population.append(protein)
+        other_proteins.append(protein)
+    random.shuffle(other_proteins)
 
-    random.shuffle(new_population)
-
-    return new_population
+    return best_proteins, other_proteins
 
 def compute_lambda(population: List[Protein], pattern_seq: str,
                   computed_proteins: Dict[str, float],

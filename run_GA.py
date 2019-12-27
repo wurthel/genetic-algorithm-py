@@ -30,10 +30,12 @@ if os.path.exists(computed_proteins_path):
 
 iteration, step, stop_step = 1, 0, 5
 while step < stop_step:
-    population = selection(population, eval_param)
+    best_proteins, population = selection(population, eval_param)
     crossover(population, genes, cros_prob)
     mutation(population, genes, mut_prob)
     compute_lambda(population, pattern_sequence, computed_proteins, compute_lmb_ouf, compute_lmb_inf)
+    population += best_proteins
+
     cur_best_protein = get_best_protein(population)
     if best_variance == None:
         best_variance = cur_best_protein.get_variance()
