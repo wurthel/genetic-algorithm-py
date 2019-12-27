@@ -4,54 +4,55 @@ from evolution import *
 # PARSING CONFIG
 config = configparser.ConfigParser()
 config.read('config.ini')
-genes = ReadGenes(config['GENES'])
-patternSequence = config['TEMPLATE']['Sequence']
-crosProb = float(config['PARAMS']['CrosProb'])
-mutProb = float(config['PARAMS']['MutProb'])
-evalParam = float(config['PARAMS']['EvalParam'])
-popSize = int(config['PARAMS']['PopSize'])
-computeLambdaInf = config['COMPUTING']['ComputeLambdaInf']
-computeLambdaOuf = config['COMPUTING']['ComputeLambdaOuf']
-computedProteinsPath = config['COMPUTING']['ComputedProteinsFileName']
-resultFileName = config['COMPUTING']['ResultFileName']
+
+genes = read_genes(config['GENES'])
+pattern_sequence = config['TEMPLATE']['Sequence']
+cros_prob = float(config['PARAMS']['CrosProb'])
+mut_prob = float(config['PARAMS']['MutProb'])
+eval_param = float(config['PARAMS']['EvalParam'])
+pop_size = int(config['PARAMS']['PopSize'])
+compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
+compute_lmb_ouf = config['COMPUTING']['ComputeLambdaOuf']
+computed_proteins_path = config['COMPUTING']['ComputedProteinsFileName']
+result_file_name = config['COMPUTING']['ResultFileName']
 
 # COMPUTING
-computedProteins = dict()
+computed_proteins = dict()
 
-population = GeneratePopulation(popSize, genes, computeLambdaOuf, computeLambdaInf)
-SaveComputing(population, computedProteins, computedProteinsPath)
+population = generate_population(pop_size, genes, compute_lmb_ouf, compute_lmb_inf)
+save_computing(population, computed_proteins, computed_proteins_path)
 
-bestVariance = None
-if os.path.exists(computedProteinsPath):
-    computedProteins = ReadComputedProteins(computedProteinsPath)
-    if computedProteins:
-        bestVariance = max(computedProteins, key=computedProteins.get)
+best_variance = None
+if os.path.exists(computed_proteins_path):
+    computed_proteins = read_computed_proteins(computed_proteins_path)
+    if computed_proteins:
+        best_variance = max(computed_proteins, key=computed_proteins.get)
 
-iteration, step, stopStep = 1, 0, 5
-while step < stopStep:
-    population = Selection(population, evalParam)
-    Crossover(population, genes, crosProb)
-    Mutation(population, genes, mutProb)
-    ComputeLambda(population, patternSequence, computedProteins, computeLambdaOuf, computeLambdaInf)
-    curBestProtein = GetBestProtein(population)
-    if bestVariance == None:
-        bestVariance = curBestProtein.GetVariance()
-    elif curBestProtein.Lambda <= computedProteins[bestVariance]:
+iteration, step, stop_step = 1, 0, 5
+while step < stop_step:
+    population = selection(population, eval_param)
+    crossover(population, genes, cros_prob)
+    mutation(population, genes, mut_prob)
+    compute_lambda(population, pattern_sequence, computed_proteins, compute_lmb_ouf, compute_lmb_inf)
+    cur_best_protein = get_best_protein(population)
+    if best_variance == None:
+        best_variance = cur_best_protein.get_variance()
+    elif cur_best_protein.mlambda <= computed_proteins[best_variance]:
         step += 1
     else:
-        bestVariance = curBestProtein.GetVariance()
+        best_variance = cur_best_protein.get_variance()
         step = 0
-    SaveComputing(population, computedProteins, computedProteinsPath)
-    line =  f'Iter: {iteration}. The best result: {bestVariance}, {computedProteins[bestVariance]}'
-    line += f' | {step}/{stopStep}'
+    save_computing(population, computed_proteins, computed_proteins_path)
+    line =  f'Iter: {iteration}. The best result: {best_variance}, {computed_proteins[best_variance]}'
+    line += f' | {step}/{stop_step}'
     print(line)
     iteration += 1
 
 # WRITING RESULTS
-results = sorted(computedProteins.items(), key=lambda x: x[1], reverse=True)
+results = sorted(computed_proteins.items(), key=lambda x: x[1], reverse=True)
 protein = Protein(genes)
-with open(resultFileName, 'w') as ouf:
+with open(result_file_name, 'w') as ouf:
     for variance, lmb in results:
-        protein.SetVariance(variance)
-        line = f'{lmb}, {variance}\n{protein.GetSequence(patternSequence)}\n\n'
+        protein.set_variance(variance)
+        line = f'{lmb}, {variance}\n{protein.get_sequence(pattern_sequence)}\n\n'
         ouf.write(line)

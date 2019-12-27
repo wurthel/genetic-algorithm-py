@@ -3,44 +3,44 @@ from typing import List
 
 class Gene():
     def __init__(self, position: int = None, variants: str = None,
-                 crosProb: float = None, mutProb: float = None) -> None:
-        self.Position = position
-        self.Variants = variants
-        self.CrosProb = crosProb
-        self.MutProb = mutProb
+                 cros_prob: float = None, mut_prob: float = None) -> None:
+        self.position = position
+        self.variants = variants
+        self.cros_prob = cros_prob
+        self.mut_prob = mut_prob
 
-    def SelectAminoacid(self) -> str:
-        x = random.choice(self.Variants)
+    def select_aminoacid(self) -> str:
+        x = random.choice(self.variants)
         return x
 
 class Protein():
     def __init__(self, genes) -> None:
-        self.Variance = dict()
-        self.Lambda = None
+        self.variance = dict()
+        self.mlambda = None
         for gene in genes:
-            self.Variance[gene.Position] = gene.SelectAminoacid()
+            self.variance[gene.position] = gene.select_aminoacid()
 
-    def UpdateVarianceFromSequence(self, genes: List[Gene], sequence: str) -> None:
-        self.Variance = dict()
-        self.Lambda = None
+    def update_variance_from_sequence(self, genes: List[Gene], sequence: str) -> None:
+        self.variance = dict()
+        self.mlambda = None
         for gene in genes:
-            pos = gene.Position
-            self.Variance[pos] = sequence[pos - 1]
+            pos = gene.position
+            self.variance[pos] = sequence[pos - 1]
 
-    def GetSequence(self, patternSequence: str) -> str:
-        patternSequence = list(patternSequence)
-        for (position, aminoacid) in self.Variance.items():
-            patternSequence[position - 1] = aminoacid
-        return ''.join(patternSequence)
+    def get_sequence(self, pattern_sequence: str) -> str:
+        pattern_sequence = list(pattern_sequence)
+        for (position, aminoacid) in self.variance.items():
+            pattern_sequence[position - 1] = aminoacid
+        return ''.join(pattern_sequence)
 
-    def UpdateVariance(self, position: int, aminoacid: str) -> None:
-        self.Variance[position] = aminoacid
-        self.Lambda = None
+    def update_variance(self, position: int, aminoacid: str) -> None:
+        self.variance[position] = aminoacid
+        self.mlambda = None
 
-    def GetVariance(self) -> str:
-        return ''.join(self.Variance.values())
+    def get_variance(self) -> str:
+        return ''.join(self.variance.values())
 
-    def SetVariance(self, aminoacids: str) -> None:
-        positions = self.Variance.keys()
+    def set_variance(self, aminoacids: str) -> None:
+        positions = self.variance.keys()
         for position, aminoacid in zip(positions, aminoacids):
-            self.UpdateVariance(position, aminoacid)
+            self.update_variance(position, aminoacid)
