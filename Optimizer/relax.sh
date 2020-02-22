@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 filename='N'
 zamm=1
 while read p; do
@@ -9,20 +8,29 @@ while read p; do
 done < $filename
 
 prosa=""
-for ((jok=1; jok <= zamm-1; jok++)) do
+for ((jok=1; jok <= $zamm-1; jok++)) do
     tropp=$(cat C_$jok)
+    echo $tropp
     fropp=$(($tropp + 1))
-    cropp=$(($tropp - 1))
     fropp1=$(($tropp + 2))
-    cropp1=$(($tropp + 2))
-    prosa="$tropp $fropp $cropp $fropp1 $cropp1 $prosa"
+    cropp=$(($tropp - 1))
+    cropp1=$(($tropp - 2))
+    prosa="$tropp $fropp $fropp1 $cropp $cropp1"
+    echo $prosa > finale_$jok
 done
-echo $prosa > finale
+
+for ((jok=2; jok <= $zamm-1; jok++)) do
+    paste finale_1 finale_$jok > finale
+    mv finale finale_1
+done
+
+sed -i "s/\t/ /g" finale_1
 #sed -i "s/and$//" finale
-resnum=$(cat finale)
-rm C_* finale
+resnum=$(cat finale_1)
+rm C_*  finale_*
 
 sed "s/NNN/$resnum/g" fixate_ret.pgn > fixate_h.pgn
+
 tail -1 1M0L.pdb > hitme
 awk '{print $3}' hitme >  hitme1
 base=$(cat hitme1)
