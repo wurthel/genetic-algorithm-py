@@ -1,11 +1,9 @@
 import numpy as np
-import sys
 import os
 
 from copy import copy
 from pathlib import Path
 from scipy.linalg import expm, norm
-from math import sqrt
 
 ifnmol = sys.argv[1]  # "Poxr.pdb"
 ifnzmx = sys.argv[2]  # "zmatrix.txt"
@@ -36,7 +34,7 @@ class Atom:
         self.ChainId = 'A'  # Chain identifier
         self.ResSeq = 0  # Residue sequence number
         self.ResCode = ''  # Code for insertions of residues
-        self.Coordin = np.array([0, 0, 0])  # (X,Y,Z) orthogonal Å coordinate
+        self.Coordin = np.array([0, 0, 0])  # (X,Y,Z) orthogonal
         self.Occup = 0.0  # Occupancy
         self.TempFac = 0.0  # Temperature factor
         self.Element = 'Xx'  # Element symbol
@@ -140,6 +138,7 @@ if os.path.isfile(opt_path / opt_resid):
 
 molecule = read_pdb(ifnmol)
 z_resseq, z_resname, z_matrix = read_zmatrix(ifnzmx)
+resSeqList = set()
 
 for N in range(len(z_matrix)):
     z_atom = z_matrix[N]
@@ -197,7 +196,6 @@ for N in range(len(z_matrix)):
     atom.Coordin = copy(v)
 
     # Optimization
-    resSeqList = set()
     for x in molecule.values():
         if x.ResSeq == z_resseq:
             continue
@@ -206,23 +204,23 @@ for N in range(len(z_matrix)):
         if x.ResSeq == z_resseq + 1:
             continue
         r = atom.Coordin - x.Coordin
-        dist = sqrt(np.dot(r, r))
+        dist = np.linalg.norm(r)
         if dist < (vdwr[atom.Element] + vdwr[x.Element]) * 0.8:
             resSeqList.add(x.ResSeq)
 
     molecule[z_atom.Serial] = atom
-    if resSeqList and (opt_skip <= 0):
+    if resSeqList and not (opt_skip > 0):
         old_dir = os.getcwd()
         os.chdir(opt_path)
         write_pdb(molecule, opt_mol_bef)
-        with open(opt_resid, 'a') as nFile:
+        with open(opt_resid, 'w') as file:
             for n in resSeqList:
-                nFile.write(str(n) + '\n')
+                file.write(f"{n}\n")
         os.system(opt_cmd)
         Molecule = read_pdb(opt_mol_aft)
         os.chdir(old_dir)
-
-    opt_skip -= 1
+    else:
+        opt_skip -= 1
 
 write_pdb(molecule, ofnmol)
 print("OKEY-DOKEY!")
