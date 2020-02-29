@@ -74,17 +74,17 @@ with open(ofname, "w") as outfile:
         # Distance
         v0 = np.array([a0.x(), a0.y(), a0.z()])
         v1 = np.array([a1.x(), a1.y(), a1.z()])
-        dist = np.sqrt(np.dot(v0 - v1, v0 - v1))
+        dist = np.linalg.norm(v0 - v1)
 
-        # ValAngl
+        # Valangle
         v2 = np.array([a2.x(), a2.y(), a2.z()])
         dist01 = dist
-        dist12 = np.sqrt(np.dot(v1 - v2, v1 - v2))
-        dist02 = np.sqrt(np.dot(v0 - v2, v0 - v2))
-        valangl = (dist01 ** 2 + dist12 ** 2 - dist02 ** 2) / (2 * dist01 * dist12)
-        valangl = np.arccos(valangl)
+        dist12 = np.linalg.norm(v1 - v2)
+        dist02 = np.linalg.norm(v0 - v2)
+        valangle = (dist01 ** 2 + dist12 ** 2 - dist02 ** 2) / (2 * dist01 * dist12)
+        valangle = np.rad2deg(np.arccos(valangle))
 
-        # DihAngl
+        # Dihangle
         v3 = np.array([a3.x(), a3.y(), a3.z()])
         b0 = -1.0 * (v1 - v0)
         b1 = v2 - v1
@@ -94,7 +94,7 @@ with open(ofname, "w") as outfile:
         w = b2 - np.dot(b2, b1) * b1
         x = np.dot(v, w)
         y = np.dot(np.cross(b1, v), w)
-        dihangl = np.arctan2(y, x)
+        dihangle = np.rad2deg(np.arctan2(y, x))
 
         # Numeration
         serial = startnum + i
@@ -108,9 +108,6 @@ with open(ofname, "w") as outfile:
         if i > 2:
             dihcon = startnum + zenum[i][2][2]
 
-        # Write to
-        line = f"{serial}\t{con}\t{dist}\t{valcon}\t{valangl}\t" \
-               f"{dihcon}\t{dihangl}\t{zenum[i][0]}\n"
+        line = f"{serial}\t{con}\t{dist}\t{valcon}\t{valangle}\t" \
+               f"{dihcon}\t{dihangle}\t{zenum[i][0]}\n"
         outfile.write(line)
-
-print("OKEY-DOKEY!")
