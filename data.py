@@ -1,46 +1,74 @@
 import random
 from typing import List
 
-class Gene():
+
+class Gene:
     def __init__(self, position: int = None, variants: str = None,
                  cros_prob: float = None, mut_prob: float = None) -> None:
-        self.position = position
-        self.variants = variants
-        self.cros_prob = cros_prob
-        self.mut_prob = mut_prob
+        self._position = position
+        self._variants = variants
+        self._cros_prob = cros_prob
+        self._mut_prob = mut_prob
 
     def select_aminoacid(self) -> str:
-        x = random.choice(self.variants)
+        x = random.choice(self._variants)
         return x
 
-class Protein():
-    def __init__(self, genes) -> None:
-        self.variance = dict()
-        self.mlambda = None
+    @property
+    def variants(self):
+        return self._variants
+
+    @property
+    def cros_prob(self):
+        return self._cros_prob
+
+    @property
+    def mut_prob(self):
+        return self._mut_prob
+
+    @property
+    def position(self):
+        return self._position
+
+
+class Protein:
+    def __init__(self, sequence, genes) -> None:
+        self.__original_sequence = sequence
+
+        self._variance = dict()
+        self._value = None
+
         for gene in genes:
             self.variance[gene.position] = gene.select_aminoacid()
 
-    def update_variance_from_sequence(self, genes: List[Gene], sequence: str) -> None:
-        self.variance = dict()
-        self.mlambda = None
-        for gene in genes:
-            pos = gene.position
-            self.variance[pos] = sequence[pos - 1]
+    @property
+    def variance(self):
+        return self._variance
 
-    def get_sequence(self, pattern_sequence: str) -> str:
-        pattern_sequence = list(pattern_sequence)
-        for (position, aminoacid) in self.variance.items():
-            pattern_sequence[position - 1] = aminoacid
-        return ''.join(pattern_sequence)
+    @property
+    def value(self):
+        return self._value
+
+    @property
+    def sequence(self):
+        sequence = list(self.__original_sequence)
+        for k, v in self._variance.items():
+            sequence[k - 1] = v
+        return ''.join(sequence)
+
+    def update_value(self, value):
+        self._value = value
 
     def update_variance(self, position: int, aminoacid: str) -> None:
-        self.variance[position] = aminoacid
-        self.mlambda = None
+        self._variance[position] = aminoacid
+        self._value = None
 
-    def get_variance(self) -> str:
-        return ''.join(self.variance.values())
+    def update_variance_from_sequence(self, genes: List[Gene], sequence: str) -> None:
+        for gene in genes:
+            k = gene.position
+            v = sequence[k - 1]
+            self.update_variance(k, v)
 
-    def set_variance(self, aminoacids: str) -> None:
-        positions = self.variance.keys()
-        for position, aminoacid in zip(positions, aminoacids):
-            self.update_variance(position, aminoacid)
+    def set_variance(self, positions: List[int], aminoacids: List[str]) -> None:
+        for k, v in zip(positions, aminoacids):
+            self.update_variance(k, v)
