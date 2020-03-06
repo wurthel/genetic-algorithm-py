@@ -1,74 +1,99 @@
 import random
+import numpy as np
 from typing import List
+
+CHARGED = "RHKDE"
+NON_CHARGED = "STNQCGPAVILMFYW"
 
 
 class Gene:
-    def __init__(self, position: int = None, variants: str = None,
-                 cros_prob: float = None, mut_prob: float = None) -> None:
+    def __init__(self, value: str = "x", position: int = 0,
+                 cros_prob: float = 0.0, mut_prob: float = 0.0,
+                 coordinates: np.ndarray = np.array([0.0, 0.0, 0.0])) -> None:
+        self._value = value
         self._position = position
-        self._variants = variants
         self._cros_prob = cros_prob
         self._mut_prob = mut_prob
-
-    def select_aminoacid(self) -> str:
-        x = random.choice(self._variants)
-        return x
+        self._coordinates = coordinates
 
     @property
-    def variants(self):
-        return self._variants
+    def type(self):
+        if self.value in CHARGED:
+            return "CHARGED"
+        if self.value in NON_CHARGED:
+            return "NONCHARGED"
+        assert False
+
+    @property
+    def value(self):
+        return self.value
+
+    @value.setter
+    def value(self, x: str):
+        self._value = x
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, v: np.ndarray):
+        self._coordinates = np.array(v)
 
     @property
     def cros_prob(self):
         return self._cros_prob
 
+    @cros_prob.setter
+    def cros_prob(self, x: float):
+        self._cros_prob = x
+
     @property
     def mut_prob(self):
         return self._mut_prob
+
+    @mut_prob.setter
+    def mut_prob(self, x: float):
+        self._mut_prob = x
 
     @property
     def position(self):
         return self._position
 
-
 class Protein:
-    def __init__(self, sequence, genes) -> None:
+    def __init__(self, sequence) -> None:
         self.__original_sequence = sequence
 
-        self._variance = dict()
+        self._genes = []
         self._value = None
 
-        for gene in genes:
-            self.variance[gene.position] = gene.select_aminoacid()
+        for n, x in enumerate(sequence):
+            gene = Gene(value=x, position=n)
+            self._genes.append(gene)
+
+    def __getitem__(self, item) -> Gene:
+        return self.genes[item]
 
     @property
-    def variance(self):
-        return self._variance
+    def sequence(self):
+        sequence = ""
+        for x in self.genes:
+            sequence += x.value
+        return sequence
+
+    @property
+    def genes(self):
+        return sorted(self._genes, key=lambda x: x.position)
 
     @property
     def value(self):
         return self._value
 
-    @property
-    def sequence(self):
-        sequence = list(self.__original_sequence)
-        for k, v in self._variance.items():
-            sequence[k - 1] = v
-        return ''.join(sequence)
+    @value.setter
+    def value(self, x):
+        self._value = x
 
-    def update_value(self, value):
-        self._value = value
-
-    def update_variance(self, position: int, aminoacid: str) -> None:
-        self._variance[position] = aminoacid
-        self._value = None
-
-    def update_variance_from_sequence(self, genes: List[Gene], sequence: str) -> None:
-        for gene in genes:
-            k = gene.position
-            v = sequence[k - 1]
-            self.update_variance(k, v)
-
-    def set_variance(self, positions: List[int], aminoacids: List[str]) -> None:
-        for k, v in zip(positions, aminoacids):
-            self.update_variance(k, v)
+    def update_genes_from_sequence(self, sequence: str) -> None:
+        self.value = None
+        for x, y in zip(self.genes, sequence):
+            x.value = y
