@@ -1,11 +1,13 @@
 import configparser
 from evolution import *
+from utils import read_sequence
+from data import IsStableStruct
 
 # PARSING CONFIG
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-pattern_sequence = config['TEMPLATE']['Sequence']
+pdb_file = "6GUX_t.pdb"
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 eval_param = float(config['PARAMS']['EvalParam'])
@@ -17,7 +19,7 @@ result_file_name = config['COMPUTING']['ResultFileName']
 
 # COMPUTING
 computed_proteins = dict()
-population = generate_population(sequence=pattern_sequence, pop_size=pop_size,
+population = generate_population(pdb_file=pdb_file, pop_size=pop_size,
                                  compute_lmb_ouf=compute_lmb_ouf, compute_lmb_inf=compute_lmb_inf)
 # save_computing(population, computed_proteins, computed_proteins_path)
 # best_variance = None
@@ -34,11 +36,13 @@ with open("cavity2.txt", "r") as file:
             protein[pos - 1].mut_prob = 0.2
 
 iteration, step, stop_step = 1, 0, 5
+check_stable = IsStableStruct()
+
 while step < stop_step:
     best_proteins, population = selection(population, eval_param)
-    crossover(population, cros_prob)
-    mutation(population, mut_prob)
-    compute_lambda(population, pattern_sequence, computed_proteins, compute_lmb_ouf, compute_lmb_inf)
+    population = crossover(population, cros_prob, check_stable)
+    population = mutation(population, mut_prob, check_stable)
+    compute_lambda(population, computed_proteins, compute_lmb_ouf, compute_lmb_inf)
     
     population = sorted(population, key=lambda p: p.value, reverse=True)
     population = best_proteins + population[0:pop_size-len(best_proteins)]
