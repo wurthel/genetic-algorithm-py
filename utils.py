@@ -149,3 +149,12 @@ def read_sequence(fname):
         if a.Name == "CA":
             sequence += resname_3to1[a.ResName]
     return sequence
+
+
+def read_coordinates(fname):
+    coords = []
+    molecule = read_pdb(fname)
+    for atom in molecule.values():
+        if atom.Name == "CA":
+            coords.append(atom.Coordin)
+    return coords
