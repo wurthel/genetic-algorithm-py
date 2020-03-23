@@ -5,7 +5,10 @@ import os
 import shutil
 from typing import List, Dict
 from data import Gene, Protein, CHARGED, NON_CHARGED
-from utils import read_sequence
+from utils import read_sequence, read_coordinates
+from abc import abstractmethod
+import numpy as np
+
 
 # def read_genes(config) -> List[Gene]:
 #     genes = list()
@@ -19,180 +22,229 @@ from utils import read_sequence
 #         genes.append(gene)
 #     return genes
 
+class Evolution:
+    def __init__(self, population, mut_prob, cros_prob, checker=None):
+        self._population = population
+        self._mut_prob = mut_prob
+        self._cros_prob = cros_prob
+        self._checker = checker
 
-def generate_population(pdb_file: str, pop_size: int, compute_lmb_ouf: str, compute_lmb_inf: str) -> List[Protein]:
-    proteins = list()
-    sequence = read_sequence(pdb_file)
-    for _ in range(pop_size):
-        protein = Protein(sequence)
-        protein.read_coordinates(pdb_file)
-        proteins.append(protein)
+    @property
+    def population(self):
+        return self._population
 
-    # if os.path.exists(compute_lmb_ouf) and os.path.exists(compute_lmb_inf):
-    #     lmb_ouf_file = open(compute_lmb_ouf, "r")
-    #     lmb_inf_file = open(compute_lmb_inf, "r")
-    #
-    #     for (protein, seq, val) in zip(proteins, lmb_ouf_file, lmb_inf_file):
-    #         protein.update_genes_from_sequence(seq)
-    #         protein.value = float(val)
-    #
-    #     lmb_ouf_file.close()
-    #     lmb_inf_file.close()
-    #
-    #     os.remove(compute_lmb_ouf)
-    #     os.remove(compute_lmb_inf)
+    @abstractmethod
+    def mutation(self):
+        pass
 
-    return proteins
+    @abstractmethod
+    def crossover(self):
+        pass
+
+    @abstractmethod
+    def selection(self):
+        pass
 
 
-def crossover(population: List[Protein], cros_prob: float, is_stable) -> List[Protein]:
-    """
-    Возвращает новую популяцию (копию)
+class BaseFunction:
+    def __init__(self, input_file, output_file):
+        self._input_file = input_file
+        self._output_file = output_file
+        self._computed = None
 
-    :param population:
-    :param cros_prob:
-    :param is_stable:
-    :return:
-    """
+    @abstractmethod
+    def compute(self):
+        pass
 
+    @abstractmethod
+    def save_to_file(self, path):
+        pass
+
+    @abstractmethod
+    def load_from_file(self, path):
+        pass
+
+
+class ProteinEvolution(Evolution, BaseFunction):
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, kwargs)
+
+        for protein in self._population:
+            if protein.value is not None:
+                self._computed[protein.sequence] = protein.value
+
+
+def mutation(self, attempts=1):
     new_population = []
-    proteins_cross = []
-    for protein in population:
+    for protein in self._population:
         r = random.random()
-        if r < cros_prob:
-            proteins_cross.append(protein)
-        else:
-            new_population.append(protein)
-
-    if len(proteins_cross) % 2 == 1:
-        protein = proteins_cross.pop()
-        new_population.append(protein)
-
-    random.shuffle(proteins_cross)
-
-    for p1, p2 in zip(proteins_cross[0:-1:2], proteins_cross[1::2]):
-        new_population.append(copy.deepcopy(p1))
-        new_population.append(copy.deepcopy(p2))
-
-        for _ in range(20):
-            p1t, p2t = copy.deepcopy(p1), copy.deepcopy(p2)
-            for g1, g2 in zip(p1t.genes.values(), p2t.genes.values()):
-                r = random.random()
-                assert g1.cros_prob == g2.cros_prob
-                if r < g1.cros_prob and g1.charged != g2.charged:
-                    g2.value, g1.value = g1.value, g2.value
-                    p1t.value, p2t.value = None, None
-            if is_stable(p1t) and is_stable(p2t):
-                new_population.pop()
-                new_population.pop()
-                new_population.append(p1t)
-                new_population.append(p2t)
-
-    return new_population
-
-
-def mutation(population: List[Protein], mut_prob: float, is_stable) -> List[Protein]:
-    new_population = []
-
-    for p in population:
-        new_population.append(copy.deepcopy(p))
-        r = random.random()
-        if r < mut_prob:
-            for _ in range(20):
-                pt = copy.deepcopy(p)
-                for g in pt.genes.values():
+        if r < self._mut_prob:
+            while attempts > 0:
+                new_protein = copy.copy(protein)
+                for gene in new_protein.genes():
                     r = random.random()
-                    if r < g.mut_prob:
-                        g.value = random.choice(NON_CHARGED) if g.charged else random.choice(CHARGED)
-                        pt.value = None
-                if is_stable(pt):
-                    new_population.pop()
-                    new_population.append(pt)
+                    if r < gene.mut_prob:
+                        gene.value = random.choice(NON_CHARGED) if gene.charged else random.choice(CHARGED)
+                        new_protein.value = None
+                if self._checker(new_protein):
+                    new_population.append(new_protein)
                     break
-
-    return new_population
-
-
-
-def evaluate(eval_param: float, n: int) -> float:
-    return eval_param * pow(1 - eval_param, n - 1)
+                elif attempts == 1:
+                    new_protein = copy.copy(protein)
+                    new_population.append(new_protein)
+                attempts -= 1
+    self._population = new_population
 
 
-def selection(population: List[Protein], eval_param: float) -> (List[Protein], List[Protein]):
-    for protein in population:
-        if protein.value is None:
-            print('WARNING: selection is missing. The population contains uncomputed lambda.')
-            return [], population
+def crossover(self, attempts=1):
+    new_population = []
+    for_cross = []
 
-    best_proteins, new_population = list(), list()
-    population = sorted(population, key=lambda x: x.value, reverse=True)
-    for _ in range(3):
-        protein = population.pop(0)
-        best_proteins.append(copy.deepcopy(protein))
-        new_population.append(copy.deepcopy(protein))
+    for x in self._population:
+        r = random.random()
+        if r < self._cros_prob:
+            for_cross.append(x)
+        else:
+            new_population.append(x)
 
-    pop_size = len(population)
-    q = list(map(lambda n: sum(map(lambda m: evaluate(eval_param, m), range(1, n + 1))), range(1, pop_size + 1)))
+    if len(for_cross) % 2 == 1:
+        new_population.append(for_cross.pop())
+
+    random.shuffle(for_cross)
+
+    for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
+        r = random.random()
+        if r < self._cros_prob:
+            while attempts > 0:
+                new_protein1, new_protein2 = protein1, protein2
+                for gene1, gene2 in zip(new_protein1.genes, new_protein2.genes):
+                    r = random.random()
+                    assert gene1.cros_prob == gene2.cros_prob
+                    if r < gene1.cros_prob and gene1.charged != gene2.charged:
+                        gene1.value, gene2.value = gene2.value, gene1.value
+                        new_protein1.value = new_protein2.value = None
+                if self.is_stable_protein(new_protein1) and self.is_stable_protein(new_protein2):
+                    new_population.append(new_protein1)
+                    new_population.append(new_protein2)
+                elif attempts == 1:
+                    new_protein1, new_protein2 = protein1, protein2
+                    new_population.append(new_protein1)
+                    new_population.append(new_protein2)
+                attempts -= 1
+    self._population = new_population
+
+
+# TODO: расширить возможности этапа селекции
+def selection(self, eval_param=0.05):
+    def distribution(p, m):
+        def evaluate(p: float, n: int) -> float:
+            return p * pow(1 - p, n - 1)
+
+        vs = []
+        for i in range(1, m + 1):
+            v = 0
+            for j in range(1, i + 1):
+                v += evaluate(p, j)
+            vs.append(v)
+        return vs
+
+    npopulation = []
+    pop_size = len(self._population)
+    n_bests = 3
+
+    population = sorted(self._population, key=lambda x: x.value, reverse=True)
+
+    bests = []
+    for i in range(n_bests):
+        x = population[i].copy()
+        bests.append(x)
+
+    q = distribution(eval_param, pop_size)
     for _ in range(pop_size):
         n, r = 0, random.uniform(0, q[-1])
         while r > q[n]:
             n += 1
-        protein = population[n]
-        new_population.append(copy.deepcopy(protein))
-    random.shuffle(new_population)
+        x = population[n].copy()
+        npopulation.append(x)
 
-    return best_proteins, new_population
+    npopulation = sorted(npopulation, key=lambda x: x.value, reverse=True)[0:-n_bests]
+    npopulation = bests + npopulation
+
+    random.shuffle(npopulation)
+
+    return npopulation
 
 
-def compute_lambda(population: List[Protein],
-                   computed_proteins: Dict[str, float],
-                   compute_lmb_ouf: str, compute_lmb_inf: str) -> None:
-    proteins_for_computing = list()
-    for protein in population:
+def compute(self):
+    for_computing = []
+    for protein in self._population:
         sequence = protein.sequence
-        if sequence in computed_proteins:
-            value = computed_proteins[sequence]
-            protein.value = value
+        if sequence in self._computed:
+            protein.value = self._computed[sequence]
         else:
-            proteins_for_computing.append(protein)
+            for_computing.append(protein)
 
-    if proteins_for_computing:
+    if for_computing:
         with open(".tempfile", "w") as ouf:
-            for protein in proteins_for_computing:
+            for protein in for_computing:
                 sequence = protein.sequence
-                ouf.write(sequence + '\n')
-        os.rename(".tempfile", compute_lmb_ouf)
+                ouf.write(sequence + "\n")
+        os.rename(".tempfile", self._output_file)
 
-        while not os.path.exists(compute_lmb_inf):
-            time.sleep(5)
+    while not os.path.exists(self._input_file):
+        time.sleep(5)
 
-        with open(compute_lmb_inf, "r") as inf:
-            for protein in proteins_for_computing:
-                protein.value = float(inf.readline())
+    with open(self._input_file) as inf:
+        for protein in for_computing:
+            protein.value = float(inf.readline())
+            sequence, value = protein.sequence, protein.value
+            self._computed[sequence] = value
 
-        os.remove(compute_lmb_ouf)
-        os.remove(compute_lmb_inf)
+    os.remove(self._output_file)
+    os.remove(self._input_file)
 
 
-def save_computing(population: List[Protein], computed_proteins: Dict[str, float], path: str) -> None:
-    with open(path, 'a') as ouf:
-        for protein in population:
-            sequence = protein.sequence
-            value = protein.value
-            if sequence in computed_proteins or value is None:
-                continue
-            computed_proteins[sequence] = value
+def save_to_file(self, path):
+    with open(path, "a") as ouf:
+        for sequence, value in self._computed.items():
             line = f'{sequence}\t{value}\n'
             ouf.write(line)
 
 
-def read_computed_proteins(path: str) -> Dict[str, float]:
-    computed_proteins = dict()
+def load_from_file(self, path):
     with open(path, "r") as inf:
         for line in inf.readlines():
             sequence, value = line.split()
-            computed_proteins[sequence] = float(value)
-    return computed_proteins
+            self._computed[sequence] = value
+
+
+def is_stable_protein(self, protein):
+    if self._checker is not None:
+        return self._checker.check(protein)
+    return True
+
+
+def generate_population(pdb_file: str, pop_size: int, computed_path: str) -> List[Protein]:
+    population = []
+
+    coordinates = read_coordinates(pdb_file)
+    if os.path.exists(computed_path):
+        with open(computed_path, "r") as inf:
+            line = inf.readline()
+            while line and len(population) <= pop_size:
+                sequence, value = line.split()
+                protein = Protein(sequence)
+                protein.value = value
+                protein.init_coordinates(coordinates)
+                population.append(protein)
+
+    sequence = read_sequence(pdb_file)
+    while len(population) <= pop_size:
+        protein = Protein(sequence)
+        protein.init_coordinates(coordinates)
+        population.append(protein)
+
+    return population
 
 
 def get_best_protein(population: List[Protein]) -> Protein:
