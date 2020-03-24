@@ -301,7 +301,7 @@ def generate_population(pdb_file: str, pop_size: int, computed_path: str) -> Lis
                 population.append(protein)
 
     sequence = read_sequence(pdb_file)
-    while len(population) <= pop_size:
+    while len(population) < pop_size:
         protein = Protein(sequence)
         population.append(protein)
 
