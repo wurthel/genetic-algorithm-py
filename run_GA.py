@@ -7,7 +7,7 @@ from functools import partial
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-pdb_file = "6GUX_t.pdb"
+pdb_file = config['PDB']['File']
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 eval_param = float(config['PARAMS']['EvalParam'])
@@ -41,7 +41,7 @@ iteration, step, stop_step = 1, 0, 5
 
 the_best_value = 0
 while step < stop_step:
-    population.mutation(attempts_por_protein=500)
+    population.mutation(attempts=500)
     population.crossover(attempts=500)
     population.compute()
 

@@ -102,6 +102,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         :param attempts: число попыток инциниализации на один protein
         :return:
         """
+
         def _mutation(protein: Protein):
             for i, gene in enumerate(protein.genes):
                 new_value = gene.value
@@ -195,7 +196,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._population = new_population
 
     # TODO: расширить возможности этапа селекции
-    def selection(self, eval_param=0.05, save_n_best=3):
+    def selection(self, eval_param, save_n_best):
         def distribution(p, m):
             def evaluate(p: float, n: int) -> float:
                 return p * pow(1 - p, n - 1)
@@ -215,53 +216,56 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         bests = []
         for i in range(save_n_best):
-            x = population[i].copy()
-            bests.append(x)
+            protein = copy(population[i])
+            bests.append(protein)
 
         q = distribution(eval_param, pop_size)
         for _ in range(pop_size):
             n, r = 0, random.uniform(0, q[-1])
             while r > q[n]:
                 n += 1
-            x = population[n].copy()
-            npopulation.append(x)
+            protein = copy(population[n])
+            npopulation.append(protein)
 
-        npopulation = sorted(npopulation, key=lambda x: x.value, reverse=True)[0:-save_n_best]
-        npopulation = bests + npopulation
+        npopulation = sorted(npopulation, key=lambda x: x.value)[0:-save_n_best]
+        npopulation.extend(bests)
 
         random.shuffle(npopulation)
 
-        return npopulation
+        self._population = npopulation
 
     def compute(self):
         for_computing = []
+
         for protein in self._population:
             sequence = protein.sequence
-            if sequence in self._computed:
-                protein.value = self._computed[sequence]
-            else:
-                for_computing.append(protein)
+            if sequence not in self._computed:
+                for_computing.append(sequence)
+                self._computed[sequence] = None
 
-        if for_computing:
-            with open(".tempfile", "w") as ouf:
-                for protein in for_computing:
-                    sequence = protein.sequence
-                    ouf.write(sequence + "\n")
-            os.rename(".tempfile", self._output_file)
+        with open(".tempfile", "w") as ouf:
+            for sequence in for_computing:
+                ouf.write(sequence + "\n")
+        os.rename(".tempfile", self._output_file)
 
         while not os.path.exists(self._input_file):
             time.sleep(5)
 
         with open(self._input_file) as inf:
-            for protein in for_computing:
-                protein.value = float(inf.readline())
-                sequence, value = protein.sequence, protein.value
+            for sequence in for_computing:
+                value = float(inf.readline())
                 self._computed[sequence] = value
+
+        for protein in self._population:
+            sequence = protein.sequence
+            value = self._computed[sequence]
+            protein.set_value(value)
 
         os.remove(self._output_file)
         os.remove(self._input_file)
 
     def save_to_file(self):
+        # TODO: Реализоват SAVED_PROTEIN, чтобы в аутпуте не было дублирующих последовательностей
         with open(self._save_file, "a") as ouf:
             for sequence, value in self._computed.items():
                 line = f'{sequence}\t{value}\n'
@@ -291,6 +295,7 @@ def generate_population(pdb_file: str, pop_size: int, computed_path: str) -> Lis
             line = inf.readline()
             while line and len(population) <= pop_size:
                 sequence, value = line.split()
+                value = float(value)
                 protein = Protein(sequence)
                 protein.set_value(value)
                 population.append(protein)
