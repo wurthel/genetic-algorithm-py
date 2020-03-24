@@ -1,6 +1,7 @@
 from data import Protein
 from functools import partial
 from numpy.linalg import norm
+import numpy as np
 
 
 class Constraints:
@@ -51,15 +52,17 @@ def constraint_n_charged(p: Protein, max_n_charged: float) -> bool:
     return False
 
 
-def constraint_distances(p: Protein, min_distance: float) -> bool:
+def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray,
+                         positions_set) -> bool:
+    assert len(p.genes) == len(coords)
     n = len(p.genes)
     for i in range(0, n):
         for j in range(i + 1, n):
-            pi, pj = p[i], p[j]
-            if pi.charged and pj.charged:
-                dist = norm(pi.coordinates - pj.coordinates)
-                if dist < min_distance:
-                    return False
+            if i + 1 in positions_set and j + 1 in positions_set:
+                if p[i].charged and p[j].charged:
+                    dist = norm(coords[i] - coords[j])
+                    if dist < min_distance:
+                        return False
     return True
 
 
@@ -81,12 +84,10 @@ if __name__ == "__main__":
     f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
     f2 = partial(constaint_charge, max_charge=7)
     f3 = partial(constraint_n_charged, max_n_charged=60)
-    f4 = partial(constraint_distances, min_distance=5.0)
 
     constraint.add(f1)
     constraint.add(f2)
     constraint.add(f3)
-    constraint.add(f4)
 
     import random
     from data import AMINOACIDS
@@ -94,11 +95,10 @@ if __name__ == "__main__":
     sequence = random.choices(AMINOACIDS, k=200)
     protein = Protein(sequence)
 
-    results_f = [f(protein) for f in [f1, f2, f3, f4]]
+    results_f = [f(protein) for f in [f1, f2, f3]]
     print(f"Constraint 1: {results_f[0]}")
     print(f"Constraint 2: {results_f[1]}")
     print(f"Constraint 3: {results_f[2]}")
-    print(f"Constraint 4: {results_f[3]}")
 
     results_checker = constraint.check(protein)
     print(f"Constraints checker: {results_checker}")

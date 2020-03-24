@@ -10,10 +10,8 @@ NONPOLAR = "GAVILPMFW"
 
 
 class Gene:
-    def __init__(self, value: str = "x",
-                 coordinates: np.ndarray = np.array([0.0, 0.0, 0.0])) -> None:
-        self._value: str = value
-        self._coordinates: np.ndarray = coordinates
+    def __init__(self, value) -> None:
+        self.__value: str = value
 
     @property
     def charged(self):
@@ -29,28 +27,20 @@ class Gene:
 
     @property
     def value(self):
-        return self._value
+        return self.__value
 
-    @value.setter
-    def value(self, x: str):
-        self._value = x
-
-    @property
-    def coordinates(self):
-        return self._coordinates
-
-    @coordinates.setter
-    def coordinates(self, v: np.ndarray):
-        self._coordinates = v
+    def __copy__(self):
+        copy = Gene(self.__value)
+        return copy
 
 
 class Protein:
     def __init__(self, sequence, value=None) -> None:
-        self._value = value
-        self._genes = [Gene(value=x) for x in sequence]
+        self.__value = value
+        self.__genes = [Gene(value=x) for x in sequence]
 
     def __getitem__(self, item):
-        return self._genes[item]
+        return self.__genes[item]
 
     @property
     def charge(self):
@@ -64,30 +54,29 @@ class Protein:
 
     @property
     def sequence(self):
-        return ''.join([str(x.value) for x in self._genes])
+        return ''.join([str(x.value) for x in self.__genes])
 
     @property
     def genes(self):
-        return self._genes
+        return self.__genes
 
     @property
     def value(self):
-        return self._value
+        return self.__value
 
-    @value.setter
-    def value(self, x):
-        self._value = x
+    def set_value(self, new_value):
+        self.__value = new_value
 
-    def init_coordinates(self, coords):
-        for i, gene in enumerate(self._genes):
-            gene.coordinates = np.array(coords[i])
+    def update_gene(self, idx, gene):
+        """
+
+        :param idx: позиция гена в sequence. 0 <= idx < len(sequqence)
+        :param gene: новый ген
+        :return:
+        """
+        self.__genes[idx] = gene
+        self.__value = None
 
     def __copy__(self):
-        new_protein = Protein(self.sequence, self.value)
-
-        coords = []
-        for gene in self.genes:
-            coords.append(gene.coordinates)
-        new_protein.init_coordinates(coords)
-
-        return new_protein
+        copy = Protein(self.sequence, self.value)
+        return copy

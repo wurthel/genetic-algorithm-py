@@ -6,6 +6,7 @@ from typing import List
 from data import Protein
 from utils import read_sequence, read_coordinates
 from abc import abstractmethod, ABC
+from data import Gene
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -18,13 +19,14 @@ ResiduesSet1 = "STNQCGPAVILMFYWEDH"
 ResiduesSet2 = "STNQCGPAVILMFYW"
 ResiduesSet3 = "RHKDESTNQCGPAVILMFYW"
 
-PositionsSet1 = [23, 56, 88, 89, 92, 93, 96, 188, 215, 218]
-PositionsSet2 = [52, 60, 86, 121, 122, 124, 125, 126, 128, 129, 140, 141, 142, 144, 145, 146, 147, 148, 181, 184, 185,
-                 186, 189, 191, 192, 193, 211, 218]
-PositionsSet3 = [18, 19, 20, 22, 24, 26, 27, 30, 48, 49, 50, 51, 53, 54, 55, 57, 58, 59, 61, 62, 63, 80, 81, 82, 84, 85,
+PositionsSet1 = {23, 56, 88, 89, 92, 93, 96, 188, 215, 218}
+PositionsSet2 = {52, 60, 86, 121, 122, 124, 125, 126, 128, 129, 140, 141, 142, 144, 145, 146, 147, 148, 181, 184, 185,
+                 186, 189, 191, 192, 193, 211, 218}
+PositionsSet3 = {18, 19, 20, 22, 24, 26, 27, 30, 48, 49, 50, 51, 53, 54, 55, 57, 58, 59, 61, 62, 63, 80, 81, 82, 84, 85,
                  87, 90, 91, 94, 95, 97, 98, 99, 100, 114, 115, 116, 117, 118, 119, 120, 127, 130, 131, 134, 136, 137,
                  138, 139, 143, 149, 150, 151, 155, 177, 178, 179, 180, 182, 183, 187, 190, 194, 195, 197, 198, 199,
-                 207, 208, 209, 210, 212, 213, 214, 216, 217, 220, 221, 222, 224, 225, 226]
+                 207, 208, 209, 210, 212, 213, 214, 216, 217, 220, 221, 222, 224, 225, 226}
+PositionsSetUnion = set.union(PositionsSet1, PositionsSet2, PositionsSet3)
 
 
 class Evolution(ABC):
@@ -95,10 +97,15 @@ class ProteinEvolution(Evolution, BaseFunction):
                 self._computed[protein.sequence] = protein.value
 
     def mutation(self, attempts=1):
+        """
+
+        :param attempts: число попыток инциниализации на один protein
+        :return:
+        """
         def _mutation(protein: Protein):
-            for n, gene in enumerate(protein.genes):
+            for i, gene in enumerate(protein.genes):
                 new_value = gene.value
-                if n + 1 in PositionsSet1:
+                if i + 1 in PositionsSet1:
                     if gene.polared:
                         if random.random() < 0.2:
                             new_value = random.choice(PullBPlus)
@@ -109,8 +116,7 @@ class ProteinEvolution(Evolution, BaseFunction):
                             new_value = random.choice(PullAPlus)
                         elif random.random() < 0.05:
                             new_value = random.choice(PullBPlus)
-                    gene.value = new_value
-                elif n + 1 in PositionsSet2:
+                elif i + 1 in PositionsSet2:
                     if gene.polared:
                         if random.random() < 0.2:
                             new_value = random.choice(PullBPlus)
@@ -121,7 +127,7 @@ class ProteinEvolution(Evolution, BaseFunction):
                             new_value = random.choice(PullAPlus)
                         elif random.random() < 0.05:
                             new_value = random.choice(PullB)
-                elif n + 1 in PositionsSet3:
+                elif i + 1 in PositionsSet3:
                     if gene.charged:
                         if random.random() < 0.2:
                             new_value = random.choice(PullC)
@@ -132,21 +138,22 @@ class ProteinEvolution(Evolution, BaseFunction):
                             new_value = random.choice(PullD)
                         elif random.random() < 0.1:
                             new_value = random.choice(PullC)
-                gene.value = new_value
+                new_gene = Gene(value=new_value)
+                protein.update_gene(i, new_gene)
 
         new_population = []
         for protein in self._population:
+            new_protein = copy(protein)
             if random.random() < self._mut_prob:
-                while attempts > 0:
-                    new_protein = copy(protein)
-                    _mutation(new_protein)
-                    if self.is_stable_protein(new_protein):
-                        new_population.append(new_protein)
+                _attempts = attempts
+                while _attempts > 0:
+                    attempt_protein = copy(new_protein)
+                    _mutation(attempt_protein)
+                    if self.is_stable_protein(attempt_protein):
+                        new_protein = attempt_protein
                         break
-                    elif attempts == 1:
-                        new_protein = copy(protein)
-                        new_population.append(new_protein)
-                    attempts -= 1
+                    _attempts -= 1
+            new_population.append(new_protein)
 
         self._population = new_population
 
@@ -154,11 +161,12 @@ class ProteinEvolution(Evolution, BaseFunction):
         new_population = []
         for_cross = []
 
-        for x in self._population:
+        for protein in self._population:
+            new_protein = copy(protein)
             if random.random() < self._cros_prob:
-                for_cross.append(x)
+                for_cross.append(new_protein)
             else:
-                new_population.append(x)
+                new_population.append(new_protein)
 
         if len(for_cross) % 2 == 1:
             new_population.append(for_cross.pop())
@@ -166,20 +174,24 @@ class ProteinEvolution(Evolution, BaseFunction):
         random.shuffle(for_cross)
 
         for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
-            while attempts > 0:
-                new_protein1, new_protein2 = copy(protein1), copy(protein2)
-                for gene1, gene2 in zip(new_protein1.genes, new_protein2.genes):
+            _attempts = attempts
+            new_protein1, new_protein2 = protein1, protein2
+            while _attempts > 0:
+                attempt_protein1, attempt_protein2 = copy(new_protein1), copy(new_protein2)
+                for i, (gene1, gene2) in enumerate(zip(attempt_protein1.genes, attempt_protein2.genes)):
                     if random.random() < self._cros_prob:
-                        gene1.value, gene2.value = gene2.value, gene1.value
-                        new_protein1.value = new_protein2.value = None
-                if self.is_stable_protein(new_protein1) and self.is_stable_protein(new_protein2):
-                    new_population.append(new_protein1)
-                    new_population.append(new_protein2)
-                elif attempts == 1:
-                    new_protein1, new_protein2 = protein1, protein2
-                    new_population.append(new_protein1)
-                    new_population.append(new_protein2)
-                attempts -= 1
+                        new_gene1 = Gene(value=gene2.value)
+                        new_gene2 = Gene(value=gene1.value)
+                        attempt_protein1.update_gene(i, new_gene1)
+                        attempt_protein2.update_gene(i, new_gene2)
+                if self.is_stable_protein(attempt_protein1) and self.is_stable_protein(attempt_protein2):
+                    new_protein1 = attempt_protein1
+                    new_protein2 = attempt_protein2
+                    break
+                _attempts -= 1
+            new_population.append(new_protein1)
+            new_population.append(new_protein2)
+
         self._population = new_population
 
     # TODO: расширить возможности этапа селекции
@@ -274,21 +286,18 @@ class ProteinEvolution(Evolution, BaseFunction):
 def generate_population(pdb_file: str, pop_size: int, computed_path: str) -> List[Protein]:
     population = []
 
-    coordinates = read_coordinates(pdb_file)
     if os.path.exists(computed_path):
         with open(computed_path, "r") as inf:
             line = inf.readline()
             while line and len(population) <= pop_size:
                 sequence, value = line.split()
                 protein = Protein(sequence)
-                protein.value = value
-                protein.init_coordinates(coordinates)
+                protein.set_value(value)
                 population.append(protein)
 
     sequence = read_sequence(pdb_file)
     while len(population) <= pop_size:
         protein = Protein(sequence)
-        protein.init_coordinates(coordinates)
         population.append(protein)
 
     return population

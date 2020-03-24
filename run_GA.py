@@ -20,8 +20,10 @@ result_file_name = config['COMPUTING']['ResultFileName']
 # GENERATING CONSTRAINTS
 constraints = Constraints()
 
+coordinates = read_coordinates(pdb_file)
+
 f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
-f2 = partial(constraint_distances, min_distance=5.0)
+f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
 f3 = partial(constaint_charge, max_charge=7)
 
 constraints.add(f1)
@@ -39,7 +41,7 @@ iteration, step, stop_step = 1, 0, 5
 
 the_best_value = 0
 while step < stop_step:
-    population.mutation(attempts=500)
+    population.mutation(attempts_por_protein=500)
     population.crossover(attempts=500)
     population.compute()
 
