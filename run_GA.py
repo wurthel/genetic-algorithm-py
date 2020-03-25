@@ -21,6 +21,7 @@ result_file_name = config['COMPUTING']['ResultFileName']
 constraints = Constraints()
 
 coordinates = read_coordinates(pdb_file)
+sequence = read_sequence(pdb_file)
 
 f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
 f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
@@ -31,11 +32,10 @@ constraints.add(f2)
 constraints.add(f3)
 
 # COMPUTING
-computed_proteins = dict()
-init_population = generate_population(pdb_file=pdb_file, pop_size=pop_size, computed_path=computed_proteins_path)
-population = ProteinEvolution(init_population, mut_prob=mut_prob, cros_prob=cros_prob,
+population = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
                               input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
                               checker=constraints)
+population.generate_population(default_sequence=sequence, pop_size=pop_size)
 
 iteration, step, stop_step = 1, 0, 5
 
@@ -61,5 +61,3 @@ while step < stop_step:
           f"Step/Stop {step}/{stop_step}\n")
 
     iteration += 1
-
-# WRITING RESULTS

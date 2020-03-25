@@ -65,7 +65,9 @@ class BaseFunction(ABC):
         self._input_file = None
         self._output_file = None
         self._save_file = None
+
         self._computed = None
+        self._saved = None
 
     @abstractmethod
     def compute(self):
@@ -91,10 +93,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._save_file = save_file
         self._checker = checker
         self._computed = dict()
-
-        for protein in self._population:
-            if protein.value is not None:
-                self._computed[protein.sequence] = protein.value
+        self._saved = set()
 
     def mutation(self, attempts=1):
         """
@@ -265,17 +264,19 @@ class ProteinEvolution(Evolution, BaseFunction):
         os.remove(self._input_file)
 
     def save_to_file(self):
-        # TODO: Реализоват SAVED_PROTEIN, чтобы в аутпуте не было дублирующих последовательностей
         with open(self._save_file, "a") as ouf:
             for sequence, value in self._computed.items():
-                line = f'{sequence}\t{value}\n'
-                ouf.write(line)
+                if sequence not in self._saved:
+                    line = f'{sequence}\t{value}\n'
+                    ouf.write(line)
+                    self._saved.add(sequence)
 
     def load_from_file(self, path):
         with open(path, "r") as inf:
             for line in inf.readlines():
                 sequence, value = line.split()
                 self._computed[sequence] = value
+                self._saved.add(sequence)
 
     def is_stable_protein(self, protein):
         if self._checker is not None:
@@ -286,26 +287,31 @@ class ProteinEvolution(Evolution, BaseFunction):
         best_protein = max(self.population, key=lambda x: x.value)
         return best_protein
 
+    def generate_population(self, default_sequence, pop_size):
+        population = []
 
-def generate_population(pdb_file: str, pop_size: int, computed_path: str) -> List[Protein]:
-    population = []
+        if os.path.exists(self._save_file):
+            with open(self._save_file, "r") as inf:
+                line = inf.readline()
+                while line:
+                    sequence, value = line.split()
+                    value = float(value)
+                    protein = Protein(sequence)
+                    protein.set_value(value)
 
-    if os.path.exists(computed_path):
-        with open(computed_path, "r") as inf:
-            line = inf.readline()
-            while line and len(population) <= pop_size:
-                sequence, value = line.split()
-                value = float(value)
-                protein = Protein(sequence)
-                protein.set_value(value)
-                population.append(protein)
+                    population.append(protein)
 
-    sequence = read_sequence(pdb_file)
-    while len(population) < pop_size:
-        protein = Protein(sequence)
-        population.append(protein)
+                    self._saved.add(sequence)
+                    self._computed[sequence] = value
 
-    return population
+                    line = inf.readline()
+                population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
+
+        while len(population) < pop_size:
+            protein = Protein(default_sequence)
+            population.append(protein)
+
+        self._population = population
 
 
 def get_best_protein(population: List[Protein]) -> Protein:
