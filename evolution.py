@@ -313,6 +313,11 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = population
 
+    def print_current_population(self):
+        print("Current population:")
+        for protein in self._population:
+            print(protein.sequence, protein.value)
+
 
 def get_best_protein(population: List[Protein]) -> Protein:
     best_protein = max(population, key=lambda x: x.value)

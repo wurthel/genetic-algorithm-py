@@ -56,8 +56,10 @@ while step < stop_step:
 
     population.save_to_file()
 
-    print(f"Iteration: {iteration}\n"
-          f"The best result: {the_best_value}\n"
+    print(f"Iteration: {iteration}\n")
+    print(f"Current population:")
+    population.print_current_population()
+    print(f"The best value: {the_best_value}\n"
           f"Step/Stop {step}/{stop_step}\n")
 
     iteration += 1
