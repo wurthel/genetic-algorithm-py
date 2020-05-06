@@ -38,6 +38,8 @@ class Protein:
     def __init__(self, sequence, value=None) -> None:
         self.__value = value
         self.__genes = [Gene(value=x) for x in sequence]
+        self.__origin_sequence = sequence
+        self.__num_changes = 0
 
     def __getitem__(self, item):
         return self.__genes[item]
@@ -64,6 +66,10 @@ class Protein:
     def value(self):
         return self.__value
 
+    @property
+    def num_changes(self):
+        return self.__num_changes
+
     def set_value(self, new_value):
         self.__value = new_value
 
@@ -74,9 +80,15 @@ class Protein:
         :param gene: новый ген
         :return:
         """
-        self.__genes[idx] = gene
-        self.__value = None
+        if gene.value != self.__genes[idx].value:
+            if self.__genes[idx].value != self.__origin_sequence[idx]:
+                self.__num_changes -= 1
+            self.__genes[idx] = gene
+            self.__value = None
+            if self.__genes[idx].value != self.__origin_sequence[idx]:
+                self.__num_changes += 1
 
     def __copy__(self):
         copy = Protein(self.sequence, self.value)
+        copy._Protein__num_changes = self.__num_changes
         return copy
