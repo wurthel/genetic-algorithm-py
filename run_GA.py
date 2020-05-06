@@ -43,8 +43,8 @@ iteration, step, stop_step = 1, 0, 5
 
 the_best_value = 0
 while step < stop_step:
-    population.mutation(attempts=500)
-    population.crossover(attempts=500)
+    population.mutation(attempts=4000)
+    population.crossover(attempts=4000)
     population.compute()
 
     population.selection(eval_param=0.05, save_n_best=3)
