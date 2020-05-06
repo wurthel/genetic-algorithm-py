@@ -141,30 +141,31 @@ class ProteinEvolution(Evolution, BaseFunction):
                 new_gene = Gene(value=new_value)
                 protein.update_gene(i, new_gene)
 
-        must_be = 0
-        real = 0
+        # must_be = 0
+        # real = 0
 
         new_population = []
         for protein in self._population:
             new_protein = copy(protein)
             if random.random() < self._mut_prob:
-                must_be += 1
+                # must_be += 1
                 _attempts = attempts
                 while _attempts > 0:
                     attempt_protein = copy(new_protein)
                     _mutation(attempt_protein)
                     if self.is_stable_protein(attempt_protein):
                         new_protein = attempt_protein
-                        real += 1
+                        # real += 1
                         break
                     _attempts -= 1
             new_population.append(new_protein)
 
-        print(f"Mutation: must_be/real {must_be}/{real}")
+        # print(f"Mutation: must_be/real {must_be}/{real}")
 
         self._population = new_population
 
     def crossover(self, attempts=1):
+        pair_cros_prob = 0.5  # вероятность обмена аминокислотами
         new_population = []
         for_cross = []
 
@@ -180,17 +181,17 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         random.shuffle(for_cross)
 
-        must_be = 0
-        real = 0
+        # must_be = 0
+        # real = 0
 
         for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
-            must_be += 2
+            # must_be += 2
             _attempts = attempts
             new_protein1, new_protein2 = protein1, protein2
             while _attempts > 0:
                 attempt_protein1, attempt_protein2 = copy(new_protein1), copy(new_protein2)
                 for i, (gene1, gene2) in enumerate(zip(attempt_protein1.genes, attempt_protein2.genes)):
-                    if random.random() < self._cros_prob:
+                    if random.random() < pair_cros_prob:
                         new_gene1 = Gene(value=gene2.value)
                         new_gene2 = Gene(value=gene1.value)
                         attempt_protein1.update_gene(i, new_gene1)
@@ -198,13 +199,13 @@ class ProteinEvolution(Evolution, BaseFunction):
                 if self.is_stable_protein(attempt_protein1) and self.is_stable_protein(attempt_protein2):
                     new_protein1 = attempt_protein1
                     new_protein2 = attempt_protein2
-                    real += 2
+                    # real += 2
                     break
                 _attempts -= 1
             new_population.append(new_protein1)
             new_population.append(new_protein2)
 
-        print(f"Crossover: must_be/real {must_be}/{real}")
+        # print(f"Crossover: must_be/real {must_be}/{real}")
 
         self._population = new_population
 
@@ -250,32 +251,32 @@ class ProteinEvolution(Evolution, BaseFunction):
     def compute(self):
         for_computing = []
 
-        already_computed = 0
+        # already_computed = 0
         for protein in self._population:
             sequence = protein.sequence
             if sequence not in self._computed:
                 for_computing.append(sequence)
                 self._computed[sequence] = None
-            else:
-                already_computed += 1
-        print(f"Already computed: {already_computed}")
+            # else:
+            #     already_computed += 1
+        # print(f"Already computed: {already_computed}")
 
         with open(".tempfile", "w") as ouf:
             for sequence in for_computing:
                 ouf.write(sequence + "\n")
         os.rename(".tempfile", self._output_file)
 
-        print(f"For computing: {len(for_computing)}")
+        # print(f"For computing: {len(for_computing)}")
         while not os.path.exists(self._input_file):
             time.sleep(5)
 
-        computed = 0
+        # computed = 0
         with open(self._input_file) as inf:
             for sequence in for_computing:
                 value = float(inf.readline())
                 self._computed[sequence] = value
-                computed += 1
-        print(f"Computed: {computed}")
+                # computed += 1
+        # print(f"Computed: {computed}")
 
         for protein in self._population:
             sequence = protein.sequence
