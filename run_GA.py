@@ -1,6 +1,6 @@
 import configparser
 from evolution import *
-from constraints import Constraints, constraint_included, constraint_distances, constaint_charge
+from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
 from functools import partial
 
 # PARSING CONFIG
@@ -25,11 +25,13 @@ sequence = read_sequence(pdb_file)
 
 f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
 f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
-f3 = partial(constaint_charge, max_charge=7)
+f3 = partial(constraint_max_charge, max_charge=7)
+f4 = partial(constraint_max_num_changes, max_num_changes=20)
 
 constraints.add(f1)
 constraints.add(f2)
 constraints.add(f3)
+constraints.add(f4)
 
 # COMPUTING
 population = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
