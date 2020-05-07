@@ -2,6 +2,7 @@ import configparser
 from evolution import *
 from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
 from functools import partial
+from logger import FileLogger
 
 # PARSING CONFIG
 config = configparser.ConfigParser()
@@ -16,6 +17,8 @@ compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
 compute_lmb_ouf = config['COMPUTING']['ComputeLambdaOuf']
 computed_proteins_path = config['COMPUTING']['ComputedProteinsFileName']
 result_file_name = config['COMPUTING']['ResultFileName']
+
+logger = FileLogger("logout")
 
 # GENERATING CONSTRAINTS
 constraints = Constraints()
@@ -36,7 +39,7 @@ constraints.add(f4)
 # COMPUTING
 population = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
                               input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
-                              checker=constraints)
+                              logger=logger, checker=constraints)
 population.generate_population(default_sequence=sequence, pop_size=pop_size)
 
 iteration, step, stop_step = 1, 0, 5
@@ -58,10 +61,10 @@ while step < stop_step:
 
     population.save_to_file()
 
-    print(f"Iteration: {iteration}\n")
-    print(f"Current population:")
+    logger(f"Iteration: {iteration}\n")
+    logger(f"Current population:\n")
     population.print_current_population()
-    print(f"The best value: {the_best_value}\n"
-          f"Step/Stop {step}/{stop_step}\n")
+    logger(f"The best value: {the_best_value}\n"
+           f"Step/Stop {step}/{stop_step}\n")
 
     iteration += 1

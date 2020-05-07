@@ -83,7 +83,7 @@ class BaseFunction(ABC):
 
 
 class ProteinEvolution(Evolution, BaseFunction):
-    def __init__(self, population, mut_prob, cros_prob, input_file, output_file, save_file, checker=None):
+    def __init__(self, population, mut_prob, cros_prob, input_file, output_file, save_file, logger, checker=None):
         super().__init__()
         self._population = population
         self._mut_prob = mut_prob
@@ -94,6 +94,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._checker = checker
         self._computed = dict()
         self._saved = set()
+        self._logger = logger
 
     def mutation(self, attempts=1):
         """
@@ -338,7 +339,7 @@ class ProteinEvolution(Evolution, BaseFunction):
 
     def print_current_population(self):
         for protein in self._population:
-            print(protein.sequence, protein.value)
+            self._logger(protein.sequence, protein.value, protein.num_changes, "\n")
 
 
 def get_best_protein(population: List[Protein]) -> Protein:
