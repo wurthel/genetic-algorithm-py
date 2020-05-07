@@ -104,43 +104,48 @@ class ProteinEvolution(Evolution, BaseFunction):
         """
 
         def _mutation(protein: Protein):
-            for i, gene in enumerate(protein.genes):
-                new_value = gene.value
-                if i + 1 in PositionsSet1:
-                    if gene.polared:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullBPlus)
-                        elif random.random() < 0.05:
-                            new_value = random.choice(PullAPlus)
-                    else:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullAPlus)
-                        elif random.random() < 0.05:
-                            new_value = random.choice(PullBPlus)
-                elif i + 1 in PositionsSet2:
-                    if gene.polared:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullBPlus)
-                        elif random.random() < 0.05:
-                            new_value = random.choice(PullA)
-                    else:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullAPlus)
-                        elif random.random() < 0.05:
-                            new_value = random.choice(PullB)
-                elif i + 1 in PositionsSet3:
-                    if gene.charged:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullC)
-                        elif random.random() < 0.1:
-                            new_value = random.choice(PullD)
-                    else:
-                        if random.random() < 0.2:
-                            new_value = random.choice(PullD)
-                        elif random.random() < 0.1:
-                            new_value = random.choice(PullC)
-                new_gene = Gene(value=new_value)
-                protein.update_gene(i, new_gene)
+            # for i, gene in enumerate(protein.genes):
+            while True:
+                i = random.randint(0, len(protein.genes) - 1)
+                if i + 1 in PositionsSetUnion:
+                    break
+            gene = protein.genes[i]
+            new_value = gene.value
+            if i + 1 in PositionsSet1:
+                if gene.polared:
+                    if random.random() < 0.5:
+                        new_value = random.choice(PullBPlus)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullAPlus)
+                else:
+                    if random.random() < 0.5:
+                        new_value = random.choice(PullAPlus)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullBPlus)
+            elif i + 1 in PositionsSet2:
+                if gene.polared:
+                    if random.random() < 0.5:
+                        new_value = random.choice(PullBPlus)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullA)
+                else:
+                    if random.random() < 0.5:
+                        new_value = random.choice(PullAPlus)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullB)
+            elif i + 1 in PositionsSet3:
+                if gene.charged:
+                    if random.random() < 0.5:
+                        new_value = random.choice(PullC)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullD)
+                else:
+                    if random.random() < 0.4:
+                        new_value = random.choice(PullD)
+                    elif random.random() < 0.2:
+                        new_value = random.choice(PullC)
+            new_gene = Gene(value=new_value)
+            protein.update_gene(i, new_gene)
 
         need = 0
         real = 0
