@@ -46,6 +46,8 @@ iteration, step, stop_step = 1, 0, 5
 
 the_best_value = 0
 while step < stop_step:
+    logger(f"Iteration: {iteration}\n")
+
     population.mutation(attempts=4000)
     population.crossover(attempts=4000)
     population.compute()
@@ -61,10 +63,10 @@ while step < stop_step:
 
     population.save_to_file()
 
-    logger(f"Iteration: {iteration}\n")
     logger(f"Current population:\n")
     population.print_current_population()
     logger(f"The best value: {the_best_value}\n"
            f"Step/Stop {step}/{stop_step}\n")
+    logger("\n")
 
     iteration += 1
