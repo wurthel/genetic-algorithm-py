@@ -103,65 +103,62 @@ class ProteinEvolution(Evolution, BaseFunction):
         :return:
         """
 
-        def _mutation(protein: Protein):
-            # for i, gene in enumerate(protein.genes):
-            while True:
-                i = random.randint(0, len(protein.genes) - 1)
-                if i + 1 in PositionsSetUnion:
-                    break
-            gene = protein.genes[i]
-            new_value = gene.value
-            if i + 1 in PositionsSet1:
-                if gene.polared:
-                    if random.random() < 0.5:
-                        new_value = random.choice(PullBPlus)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullAPlus)
-                else:
-                    if random.random() < 0.5:
-                        new_value = random.choice(PullAPlus)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullBPlus)
-            elif i + 1 in PositionsSet2:
-                if gene.polared:
-                    if random.random() < 0.5:
-                        new_value = random.choice(PullBPlus)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullA)
-                else:
-                    if random.random() < 0.5:
-                        new_value = random.choice(PullAPlus)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullB)
-            elif i + 1 in PositionsSet3:
-                if gene.charged:
-                    if random.random() < 0.5:
-                        new_value = random.choice(PullC)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullD)
-                else:
-                    if random.random() < 0.4:
-                        new_value = random.choice(PullD)
-                    elif random.random() < 0.2:
-                        new_value = random.choice(PullC)
-            new_gene = Gene(value=new_value)
-            protein.update_gene(i, new_gene)
-
         need = 0
         real = 0
 
         new_population = []
+
         for protein in self._population:
             new_protein = copy(protein)
             if random.random() < self._mut_prob:
                 need += 1
-                for _ in range(attempts):
-                    attempt_protein = copy(new_protein)
-                    _mutation(attempt_protein)
-                    if self.is_stable_protein(attempt_protein):
-                        new_protein = attempt_protein
+                for attempt in range(attempts):
+                    position = random.choice(tuple(PositionsSetUnion))
+                    old_gene = new_protein.genes[position - 1]
+                    new_value = old_gene.value
+                    if position in PositionsSet1:
+                        if old_gene.polared:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullBPlus)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullAPlus)
+                        else:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullAPlus)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullBPlus)
+                    elif position in PositionsSet2:
+                        if old_gene.polared:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullBPlus)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullA)
+                        else:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullAPlus)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullB)
+                    elif position in PositionsSet3:
+                        if old_gene.charged:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullC)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullD)
+                        else:
+                            if random.random() < 0.4:
+                                new_value = random.choice(PullD)
+                            elif random.random() < 0.2:
+                                new_value = random.choice(PullC)
+
+                    new_gene = Gene(value=new_value)
+                    new_protein.update_gene(position - 1, new_gene)
+
+                    if self.is_stable_protein(new_protein):
                         real += 1
                         break
+                    else:
+                        new_protein.update_gene(position - 1, old_gene)
+
             new_population.append(new_protein)
 
         self._logger(f"Mutation: I will try to change {need} proteins... {real} proteins changed\n")
@@ -169,7 +166,6 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._population = new_population
 
     def crossover(self, attempts=1):
-        pair_cros_prob = 0.5  # вероятность обмена аминокислотами
         new_population = []
         for_cross = []
 
@@ -188,10 +184,11 @@ class ProteinEvolution(Evolution, BaseFunction):
         need = 0
         real = 0
 
+        pair_cros_prob = 0.5  # crossover pair probability
         for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
             need += 2
             new_protein1, new_protein2 = protein1, protein2
-            for _ in range(attempts):
+            for attempt in range(attempts):
                 attempt_protein1, attempt_protein2 = copy(new_protein1), copy(new_protein2)
                 for i, (gene1, gene2) in enumerate(zip(attempt_protein1.genes, attempt_protein2.genes)):
                     if random.random() < pair_cros_prob:
@@ -199,11 +196,13 @@ class ProteinEvolution(Evolution, BaseFunction):
                         new_gene2 = Gene(value=gene1.value)
                         attempt_protein1.update_gene(i, new_gene1)
                         attempt_protein2.update_gene(i, new_gene2)
+
                 if self.is_stable_protein(attempt_protein1) and self.is_stable_protein(attempt_protein2):
                     new_protein1 = attempt_protein1
                     new_protein2 = attempt_protein2
                     real += 2
                     break
+
             new_population.append(new_protein1)
             new_population.append(new_protein2)
 
@@ -253,30 +252,36 @@ class ProteinEvolution(Evolution, BaseFunction):
     def compute(self):
         for_computing = []
 
+        # Find existing calcs
         for protein in self._population:
             sequence = protein.sequence
             if sequence not in self._computed:
                 for_computing.append(sequence)
                 self._computed[sequence] = None
 
+        # Print to output file
         with open(".tempfile", "w") as ouf:
             for sequence in for_computing:
                 ouf.write(sequence + "\n")
         os.rename(".tempfile", self._output_file)
 
+        # Wait results
         while not os.path.exists(self._input_file):
             time.sleep(5)
 
+        # Read results and save
         with open(self._input_file) as inf:
             for sequence in for_computing:
                 value = float(inf.readline())
                 self._computed[sequence] = value
 
+        # Write values to proteins
         for protein in self._population:
             sequence = protein.sequence
             value = self._computed[sequence]
             protein.set_value(value)
 
+        # Remove out/inp filess
         os.remove(self._output_file)
         os.remove(self._input_file)
 
@@ -313,8 +318,7 @@ class ProteinEvolution(Evolution, BaseFunction):
                 while line:
                     sequence, value = line.split()
                     value = float(value)
-                    protein = Protein(sequence)
-                    protein.set_value(value)
+                    protein = Protein.create_protein(sequence, default_sequence, value=value)
 
                     population.append(protein)
 
@@ -322,17 +326,18 @@ class ProteinEvolution(Evolution, BaseFunction):
                     self._computed[sequence] = value
 
                     line = inf.readline()
+
                 population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
 
         while len(population) < pop_size:
-            protein = Protein(default_sequence)
+            protein = Protein.create_protein(default_sequence, default_sequence, value=None)
             population.append(protein)
 
         self._population = population
 
     def print_current_population(self):
         for protein in self._population:
-            self._logger(protein.sequence, protein.value, protein.num_changes, "\n")
+            self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
 
 
 def get_best_protein(population: List[Protein]) -> Protein:

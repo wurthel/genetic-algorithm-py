@@ -54,8 +54,8 @@ def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray,
     n = len(p.genes)
     for i in range(0, n):
         for j in range(i + 1, n):
-            if i + 1 in positions_set and j + 1 in positions_set:
-                if p[i].charged and p[j].charged:
+            if (i + 1) in positions_set and (j + 1) in positions_set:
+                if p.genes[i].charged and p.genes[j].charged:
                     dist = norm(coords[i] - coords[j])
                     if dist < min_distance:
                         return False

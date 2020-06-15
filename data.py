@@ -1,8 +1,8 @@
 import numpy as np
 
 AMINOACIDS = "RHKDESTNQCGPAVILMFYW"
-CHARGED = "RHKDE"
 NON_CHARGED = "STNQCGPAVILMFYW"
+CHARGED = "RHKDE"
 POSITIVE_CHARGE = "RHK"
 NEGATIVE_CHARGE = "DE"
 POLAR = "STCNQKRYDEH"
@@ -11,52 +11,76 @@ NONPOLAR = "GAVILPMFW"
 
 class Gene:
     def __init__(self, value) -> None:
-        self.__value: str = value
+        self.__value = value
 
     @property
     def charged(self):
-        if self.value in CHARGED:
-            return True
-        return False
+        return self.value in CHARGED
+
+    @property
+    def charge(self):
+        if self.value in POSITIVE_CHARGE:
+            return 1
+        if self.value in NEGATIVE_CHARGE:
+            return -1
+        return 0
 
     @property
     def polared(self):
-        if self.value in POLAR:
-            return True
-        return False
+        return self.value in POLAR
 
     @property
     def value(self):
         return self.__value
 
+    @value.setter
+    def value(self, x):
+        self.__value = x
+
     def __copy__(self):
         copy = Gene(self.__value)
+
         return copy
 
 
 class Protein:
-    def __init__(self, sequence, value=None) -> None:
-        self.__value = value
-        self.__genes = [Gene(value=x) for x in sequence]
-        self.__origin_sequence = sequence
-        self.__num_changes = 0
+    @classmethod
+    def create_protein(cls, sequence, origin_sequence, value):
+        protein = Protein(sequence, origin_sequence)
 
-    def __getitem__(self, item):
-        return self.__genes[item]
+        protein.__value = value
+
+        # Calc charge
+        protein.__charge = 0
+        for gene in protein.__genes:
+            protein.__charge += gene.charge
+
+        # Calc changes
+        protein.__num_changes = 0
+        for x1, x2 in zip(sequence, origin_sequence):
+            if x1 != x2:
+                protein.__num_changes += 1
+
+        return protein
+
+    def __init__(self, sequence, origin_sequence) -> None:
+        self.__genes = [Gene(x) for x in sequence]
+        self.__origin_genes = [Gene(x) for x in origin_sequence]
+        self.__num_changes = None
+        self.__value = None
+        self.__charge = None
 
     @property
     def charge(self):
-        charge = 0
-        for v in self.sequence:
-            if v in POSITIVE_CHARGE:
-                charge += 1
-            if v in NEGATIVE_CHARGE:
-                charge -= 1
-        return charge
+        return self.__charge
 
     @property
     def sequence(self):
         return ''.join([str(x.value) for x in self.__genes])
+
+    @property
+    def origin_sequence(self):
+        return ''.join([str(x.value) for x in self.__origin_genes])
 
     @property
     def genes(self):
@@ -75,20 +99,45 @@ class Protein:
 
     def update_gene(self, idx, gene):
         """
+        Обновляет значение (value) в гене.
 
         :param idx: позиция гена в sequence. 0 <= idx < len(sequqence)
         :param gene: новый ген
         :return:
         """
         if gene.value != self.__genes[idx].value:
-            if self.__genes[idx].value != self.__origin_sequence[idx]:
+            # Update num changes
+            if self.__genes[idx].value != self.__origin_genes[idx].value:
                 self.__num_changes -= 1
+
+            # Update charge
+            self.__charge -= self.__genes[idx].charge
+
+            # Change gene
             self.__genes[idx] = gene
-            self.__value = None
-            if self.__genes[idx].value != self.__origin_sequence[idx]:
+
+            # Update charge
+            self.__charge += self.__genes[idx].charge
+
+            # Update num changes
+            if self.__genes[idx].value != self.__origin_genes[idx].value:
                 self.__num_changes += 1
 
+            # Update value
+            self.__value = None
+
+    def get_gene(self, idx):
+        """
+        Возвращает копию гена по индексу
+        :param idx: индекс гена, 0 <= idx < len(genes)
+        :return:
+        """
+        return self.__genes[idx].__copy__()
+
     def __copy__(self):
-        copy = Protein(self.sequence, self.value)
-        copy._Protein__num_changes = self.__num_changes
+        copy = Protein(self.sequence, self.origin_sequence)
+        copy.__value = self.__value
+        copy.__charge = self.__charge
+        copy.__num_changes = self.__num_changes
+
         return copy
