@@ -11,6 +11,7 @@ config.read('config.ini')
 pdb_file = config['PDB']['File']
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
+mut_num = int(config['PARAMS']['MutNum'])
 eval_param = float(config['PARAMS']['EvalParam'])
 pop_size = int(config['PARAMS']['PopSize'])
 compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
@@ -37,7 +38,7 @@ constraints.add(f3)
 constraints.add(f4)
 
 # COMPUTING
-population = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
+population = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob,
                               input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
                               logger=logger, checker=constraints)
 population.generate_population(default_sequence=sequence, pop_size=pop_size)

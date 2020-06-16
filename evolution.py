@@ -83,10 +83,11 @@ class BaseFunction(ABC):
 
 
 class ProteinEvolution(Evolution, BaseFunction):
-    def __init__(self, population, mut_prob, cros_prob, input_file, output_file, save_file, logger, checker=None):
+    def __init__(self, population, mut_prob, mut_num, cros_prob, input_file, output_file, save_file, logger, checker=None):
         super().__init__()
         self._population = population
         self._mut_prob = mut_prob
+        self._mut_num = mut_num
         self._cros_prob = cros_prob
         self._input_file = input_file
         self._output_file = output_file
@@ -103,65 +104,68 @@ class ProteinEvolution(Evolution, BaseFunction):
         :return:
         """
 
-        need = 0
-        real = 0
-
         new_population = []
+        num_of_changed = 0
+        first_p = 0.6
+        second_p = 0.4
 
         for protein in self._population:
             new_protein = copy(protein)
             if random.random() < self._mut_prob:
-                need += 1
-                for attempt in range(attempts):
+                num_of_changed += 1
+                attempt = 0
+                num_mut = 0
+                while num_mut < self._mut_num and attempt < attempts:
                     position = random.choice(tuple(PositionsSetUnion))
                     old_gene = new_protein.genes[position - 1]
                     new_value = old_gene.value
+
                     if position in PositionsSet1:
                         if old_gene.polared:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullBPlus)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullAPlus)
                         else:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullAPlus)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullBPlus)
                     elif position in PositionsSet2:
                         if old_gene.polared:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullBPlus)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullA)
                         else:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullAPlus)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullB)
                     elif position in PositionsSet3:
                         if old_gene.charged:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullC)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullD)
                         else:
-                            if random.random() < 0.4:
+                            if random.random() < first_p:
                                 new_value = random.choice(PullD)
-                            elif random.random() < 0.2:
+                            elif random.random() < second_p:
                                 new_value = random.choice(PullC)
 
                     new_gene = Gene(value=new_value)
                     new_protein.update_gene(position - 1, new_gene)
 
                     if self.is_stable_protein(new_protein):
-                        real += 1
-                        break
+                        num_mut += 1
                     else:
+                        # Restore old gene
                         new_protein.update_gene(position - 1, old_gene)
-
+                    attempt += 1
             new_population.append(new_protein)
 
-        self._logger(f"Mutation: I will try to change {need} proteins... {real} proteins changed\n")
+        self._logger(f"Mutation: I will try to change {num_of_changed} proteins... {num_of_changed} proteins changed\n")
 
         self._population = new_population
 
