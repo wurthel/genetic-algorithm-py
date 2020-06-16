@@ -224,30 +224,27 @@ class ProteinEvolution(Evolution, BaseFunction):
                 vs.append(v)
             return vs
 
-        npopulation = []
+        new_population = []
         pop_size = len(self._population)
 
         population = sorted(self._population, key=lambda x: x.value, reverse=True)
 
-        bests = []
         for i in range(save_n_best):
             protein = copy(population[i])
-            bests.append(protein)
+            new_population.append(protein)
 
         q = distribution(eval_param, pop_size)
-        for _ in range(pop_size):
+        for _ in range(pop_size - save_n_best):
             n, r = 0, random.uniform(0, q[-1])
             while r > q[n]:
                 n += 1
             protein = copy(population[n])
-            npopulation.append(protein)
+            new_population.append(protein)
 
-        npopulation = sorted(npopulation, key=lambda x: x.value)[0:-save_n_best]
-        npopulation.extend(bests)
+        new_population = sorted(new_population, key=lambda x: x.value)[0:pop_size]
+        random.shuffle(new_population)
 
-        random.shuffle(npopulation)
-
-        self._population = npopulation
+        self._population = new_population
 
     def compute(self):
         for_computing = []
