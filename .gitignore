@@ -1,3 +1,10 @@
+computed_proteins
+differences.txt
+logout
+tmp_out
+tmp_in
+6GUX_t.pdb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
