@@ -270,6 +270,10 @@ class ProteinEvolution(Evolution, BaseFunction):
         while not os.path.exists(self._input_file):
             time.sleep(5)
 
+            # Fake computing
+            # from run_simulate_computing import run_simulate_computing
+            # run_simulate_computing()
+
         # Read results and save
         with open(self._input_file) as inf:
             for sequence in for_computing:
