@@ -30,7 +30,7 @@ sequence = read_sequence(pdb_file)
 f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
 f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
 f3 = partial(constraint_max_charge, max_charge=7)
-f4 = partial(constraint_max_num_changes, max_num_changes=20)
+f4 = partial(constraint_max_num_changes, max_num_changes=10)
 
 constraints.add(f1)
 constraints.add(f2)
