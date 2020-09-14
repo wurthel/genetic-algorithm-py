@@ -7,6 +7,7 @@ from data import Protein
 from utils import read_sequence, read_coordinates
 from abc import abstractmethod, ABC
 from data import Gene
+from itertools import count
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -343,6 +344,18 @@ class ProteinEvolution(Evolution, BaseFunction):
     def print_current_population(self):
         for protein in self._population:
             self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
+
+    def print_current_population_differences(self):
+        for protein in self._population:
+            sequence = protein.sequence
+            origin_sequence = protein.origin_sequence
+            isDifferent = False
+            for idx, p1, p2 in zip(count(1), origin_sequence, sequence):
+                if p1 != p2:
+                    isDifferent = True
+                    self._logger(f"{p1}/{idx}/{p2} ")
+            if isDifferent:
+                self._logger("\n")
 
 
 def get_best_protein(population: List[Protein]) -> Protein:
