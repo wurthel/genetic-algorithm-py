@@ -3,11 +3,11 @@ from copy import copy
 import time
 import os
 from typing import List
-from data import Protein
-from utils import read_sequence, read_coordinates
 from abc import abstractmethod, ABC
-from data import Gene
 from itertools import count
+
+from data import Protein, Gene
+from utils import read_sequence, read_coordinates
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -258,13 +258,21 @@ class ProteinEvolution(Evolution, BaseFunction):
         for protein in self._population:
             sequence = protein.sequence
             if sequence not in self._computed:
-                for_computing.append(sequence)
+                for_computing.append(protein)
                 self._computed[sequence] = None
 
         # Print to output file
         with open(".tempfile", "w") as ouf:
-            for sequence in for_computing:
-                ouf.write(sequence + "\n")
+            for protein in for_computing:
+                sequence = protein.sequence
+                origin_sequence = protein.origin_sequence
+                isDifferent = False
+                for idx, p1, p2 in zip(count(1), origin_sequence, sequence):
+                    if p1 != p2:
+                        isDifferent = True
+                        ouf.write(f"{p1}/{idx}/{p2} ")
+                if isDifferent:
+                    ouf.write("\n")
         os.rename(".tempfile", self._output_file)
 
         # Wait results
@@ -278,8 +286,8 @@ class ProteinEvolution(Evolution, BaseFunction):
         # Read results and save
         with open(self._input_file) as inf:
             for sequence in for_computing:
-                value = float(inf.readline())
-                self._computed[sequence] = value
+                protein = float(inf.readline())
+                self._computed[protein.sequence] = value
 
         # Write values to proteins
         for protein in self._population:
