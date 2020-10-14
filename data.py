@@ -1,4 +1,6 @@
 import numpy as np
+from typing import List, Tuple
+from itertools import count
 
 AMINOACIDS = "RHKDESTNQCGPAVILMFYW"
 NON_CHARGED = "STNQCGPAVILMFYW"
@@ -42,6 +44,8 @@ class Gene:
 
         return copy
 
+    def __eq__(self, other: 'Gene'):
+        return self.__value == other.__value
 
 class Protein:
     @classmethod
@@ -126,6 +130,13 @@ class Protein:
             # Update value
             self.__value = None
 
+    def get_differences(self) -> List[Tuple[int, Gene, Gene]]:
+        differences = []
+        for idx, g1, g2 in zip(count(1), self.origin_sequence, self.sequence):
+            if g1 != g2:
+                differences.append((idx, g1, g2))
+        return differences
+
     def get_gene(self, idx):
         """
         Возвращает копию гена по индексу
@@ -141,3 +152,6 @@ class Protein:
         copy.__num_changes = self.__num_changes
 
         return copy
+
+    def __eq__(self, other: 'Protein'):
+        return self.sequence == other.sequence

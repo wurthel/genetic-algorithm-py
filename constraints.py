@@ -27,7 +27,7 @@ class Constraints:
         Проверяет удовлетворение объекта всем констрэинтам
 
         :param x:
-        :return:
+        :return: True, если все функции ограничения вернули True
         """
         for f in self._constraints:
             if not f(x):
@@ -48,8 +48,7 @@ def constraint_n_charged(p: Protein, max_n_charged: float) -> bool:
     return count < max_n_charged
 
 
-def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray,
-                         positions_set) -> bool:
+def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray, positions_set) -> bool:
     assert len(p.genes) == len(coords)
     n = len(p.genes)
     for i in range(0, n):

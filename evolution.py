@@ -252,32 +252,27 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._population = new_population
 
     def compute(self):
-        for_computing = []
+        proteins_for_computing = []
 
         # Find existing calcs
         for protein in self._population:
-            sequence = protein.sequence
-            if sequence not in self._computed:
-                for_computing.append(protein)
-                self._computed[sequence] = None
+            if protein.sequence not in self._computed:
+                proteins_for_computing.append(protein)
+                self._computed[protein.sequence] = None
 
         # Print to output file
         with open(".tempfile", "w") as ouf:
-            for protein in for_computing:
-                sequence = protein.sequence
-                origin_sequence = protein.origin_sequence
-                isDifferent = False
-                for idx, p1, p2 in zip(count(1), origin_sequence, sequence):
-                    if p1 != p2:
-                        isDifferent = True
-                        ouf.write(f"{p1}/{idx}/{p2} ")
-                if isDifferent:
+            for protein in proteins_for_computing:
+                differences = protein.get_differences()
+                if differences:
+                    for idx, g1, g2 in protein.get_differences():
+                        ouf.write(f"{g1}/{idx}/{g2} ")
                     ouf.write("\n")
         os.rename(".tempfile", self._output_file)
 
         # Wait results
         while not os.path.exists(self._input_file):
-            time.sleep(5)
+            time.sleep(1)
 
             # Fake computing
             # from run_simulate_computing import run_simulate_computing
@@ -285,14 +280,13 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         # Read results and save
         with open(self._input_file) as inf:
-            for sequence in for_computing:
-                protein = float(inf.readline())
+            for protein in proteins_for_computing:
+                value = float(inf.readline())
                 self._computed[protein.sequence] = value
 
         # Write values to proteins
         for protein in self._population:
-            sequence = protein.sequence
-            value = self._computed[sequence]
+            value = self._computed[protein.sequence]
             protein.set_value(value)
 
         # Remove out/inp filess
@@ -352,18 +346,9 @@ class ProteinEvolution(Evolution, BaseFunction):
     def print_current_population(self):
         for protein in self._population:
             self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
-
-    def print_current_population_differences(self):
-        for protein in self._population:
-            sequence = protein.sequence
-            origin_sequence = protein.origin_sequence
-            isDifferent = False
-            for idx, p1, p2 in zip(count(1), origin_sequence, sequence):
-                if p1 != p2:
-                    isDifferent = True
-                    self._logger(f"{p1}/{idx}/{p2} ")
-            if isDifferent:
-                self._logger("\n")
+            for idx, g1, g2 in protein.get_differences():
+                self._logger(f"{g1}/{idx}/{g2} ")
+            self._logger("\n")
 
 
 def get_best_protein(population: List[Protein]) -> Protein:

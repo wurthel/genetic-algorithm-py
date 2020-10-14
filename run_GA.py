@@ -65,7 +65,7 @@ while step < stop_step:
     population.save_to_file()
 
     logger(f"Current population:\n")
-    population.print_current_population_differences()
+    population.print_current_population()
     logger(f"The best value: {the_best_value}\n"
            f"Step/Stop {step}/{stop_step}\n")
     logger("\n")

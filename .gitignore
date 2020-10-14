@@ -111,3 +111,7 @@ venv.bak/
 .mypy_cache/
 
 .idea/
+/run_simulate_computing.py
+/findDifferences.py
+/tests/
+/D95E.pdb
