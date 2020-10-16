@@ -1,13 +1,10 @@
-import random
-from copy import copy
-import time
 import os
-from typing import List
+import random
+import time
 from abc import abstractmethod, ABC
-from itertools import count
+from copy import copy
 
 from data import Protein, Gene
-from utils import read_sequence, read_coordinates
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -49,37 +46,31 @@ class Evolution(ABC):
         return self._cros_prob
 
     @abstractmethod
-    def mutation(self):
+    def mutation(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def crossover(self):
+    def crossover(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def selection(self):
+    def selection(self, *args, **kwargs):
         pass
 
 
 class BaseFunction(ABC):
     def __init__(self):
-        self._input_file = None
-        self._output_file = None
-        self._save_file = None
-
+        self._input_file: str = None
+        self._output_file: str = None
+        self._save_file: str = None
         self._computed = None
-        self._saved = None
 
     @abstractmethod
-    def compute(self):
+    def compute(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def save_to_file(self):
-        pass
-
-    @abstractmethod
-    def load_from_file(self, path):
+    def save_computing(self, *args, **kwargs):
         pass
 
 
@@ -93,9 +84,8 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._input_file = input_file
         self._output_file = output_file
         self._save_file = save_file
-        self._checker = checker
         self._computed = dict()
-        self._saved = set()
+        self._checker = checker
         self._logger = logger
 
     def mutation(self, attempts=1):
@@ -258,16 +248,13 @@ class ProteinEvolution(Evolution, BaseFunction):
         for protein in self._population:
             if protein.sequence not in self._computed:
                 proteins_for_computing.append(protein)
-                self._computed[protein.sequence] = None
 
         # Print to output file
         with open(".tempfile", "w") as ouf:
             for protein in proteins_for_computing:
-                differences = protein.get_differences()
-                if differences:
-                    for idx, g1, g2 in protein.get_differences():
-                        ouf.write(f"{g1}/{idx}/{g2} ")
-                    ouf.write("\n")
+                for idx, g1, g2 in protein.get_differences():
+                    ouf.write(f"{g1}/{idx}/{g2} ")
+                ouf.write("\n")
         os.rename(".tempfile", self._output_file)
 
         # Wait results
@@ -282,7 +269,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         with open(self._input_file) as inf:
             for protein in proteins_for_computing:
                 value = float(inf.readline())
-                self._computed[protein.sequence] = value
+                self.save_computing(protein.sequence, value)
 
         # Write values to proteins
         for protein in self._population:
@@ -293,20 +280,11 @@ class ProteinEvolution(Evolution, BaseFunction):
         os.remove(self._output_file)
         os.remove(self._input_file)
 
-    def save_to_file(self):
-        with open(self._save_file, "a") as ouf:
-            for sequence, value in self._computed.items():
-                if sequence not in self._saved:
-                    line = f'{sequence}\t{value}\n'
-                    ouf.write(line)
-                    self._saved.add(sequence)
-
-    def load_from_file(self, path):
-        with open(path, "r") as inf:
-            for line in inf.readlines():
-                sequence, value = line.split()
-                self._computed[sequence] = value
-                self._saved.add(sequence)
+    def save_computing(self, sequence, value):
+        if sequence not in self._computed:
+            self._computed[sequence] = value
+            with open(self._save_file, 'a') as f:
+                f.write(f"{sequence} {value}\n")
 
     def is_stable_protein(self, protein):
         if self._checker is not None:
@@ -317,31 +295,29 @@ class ProteinEvolution(Evolution, BaseFunction):
         best_protein = max(self.population, key=lambda x: x.value)
         return best_protein
 
-    def generate_population(self, default_sequence, pop_size):
+    def generate_population(self, default_sequence, default_value, pop_size, from_computed=True):
         population = []
 
-        if os.path.exists(self._save_file):
-            with open(self._save_file, "r") as inf:
-                line = inf.readline()
-                while line:
-                    sequence, value = line.split()
-                    value = float(value)
-                    protein = Protein.create_protein(sequence, default_sequence, value=value)
+        self.save_computing(default_sequence, default_value)
 
-                    population.append(protein)
-
-                    self._saved.add(sequence)
-                    self._computed[sequence] = value
-
-                    line = inf.readline()
-
-                population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
+        if from_computed:
+            for sequence, value in self._computed.items():
+                protein = Protein.create_protein(sequence, default_sequence, value=value)
+                population.append(protein)
+            population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
 
         while len(population) < pop_size:
-            protein = Protein.create_protein(default_sequence, default_sequence, value=None)
+            protein = Protein.create_protein(default_sequence, default_sequence, value=default_value)
             population.append(protein)
 
         self._population = population
+
+    def load_computed_proteins(self):
+        if os.path.exists(self._save_file):
+            with open(self._save_file, "r") as inf:
+                for line in inf.readlines():
+                    sequence, value = line.split()
+                    self._computed[sequence] = float(value)
 
     def print_current_population(self):
         for protein in self._population:
@@ -349,8 +325,3 @@ class ProteinEvolution(Evolution, BaseFunction):
             for idx, g1, g2 in protein.get_differences():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
-
-
-def get_best_protein(population: List[Protein]) -> Protein:
-    best_protein = max(population, key=lambda x: x.value)
-    return best_protein

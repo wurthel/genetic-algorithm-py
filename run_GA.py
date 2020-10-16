@@ -1,14 +1,17 @@
 import configparser
-from evolution import *
-from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
 from functools import partial
+
+from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
+from evolution import *
 from logger import FileLogger
+from utils import *
 
 # PARSING CONFIG
 config = configparser.ConfigParser()
 config.read('config.ini')
 
 pdb_file = config['PDB']['File']
+value = float(config['PDB']['VALUE'])
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 mut_num = int(config['PARAMS']['MutNum'])
@@ -41,7 +44,8 @@ constraints.add(f4)
 population = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob,
                               input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
                               logger=logger, checker=constraints)
-population.generate_population(default_sequence=sequence, pop_size=pop_size)
+population.load_computed_proteins()
+population.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=True)
 
 iteration, step, stop_step = 1, 0, 5
 
@@ -61,8 +65,6 @@ while step < stop_step:
         step = 0
     else:
         step += 1
-
-    population.save_to_file()
 
     logger(f"Current population:\n")
     population.print_current_population()

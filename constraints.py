@@ -1,7 +1,9 @@
-from data import Protein
 from functools import partial
-from numpy.linalg import norm
+
 import numpy as np
+from numpy.linalg import norm
+
+from data import Protein
 
 
 class Constraints:

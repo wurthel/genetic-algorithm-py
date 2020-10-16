@@ -1,6 +1,5 @@
-import numpy as np
-from typing import List, Tuple
 from itertools import count
+from typing import List, Tuple
 
 AMINOACIDS = "RHKDESTNQCGPAVILMFYW"
 NON_CHARGED = "STNQCGPAVILMFYW"
@@ -46,6 +45,7 @@ class Gene:
 
     def __eq__(self, other: 'Gene'):
         return self.__value == other.__value
+
 
 class Protein:
     @classmethod
