@@ -5,6 +5,7 @@ from abc import abstractmethod, ABC
 from copy import copy
 
 from data import Protein, Gene
+from pathlib import Path
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -27,7 +28,7 @@ PositionsSet3 = {18, 19, 20, 22, 24, 26, 27, 30, 48, 49, 50, 51, 53, 54, 55, 57,
 PositionsSetUnion = set.union(PositionsSet1, PositionsSet2, PositionsSet3)
 
 
-class Evolution(ABC):
+class BaseEvolution(ABC):
     def __init__(self):
         self._population = None
         self._mut_prob = None
@@ -59,34 +60,55 @@ class Evolution(ABC):
 
 
 class BaseFunction(ABC):
-    def __init__(self):
-        self._input_file: str = None
-        self._output_file: str = None
-        self._save_file: str = None
-        self._computed = None
-
     @abstractmethod
     def compute(self, *args, **kwargs):
         pass
 
-    @abstractmethod
-    def save_computing(self, *args, **kwargs):
-        pass
+
+class ProteinEvolutionSaver:
+    def __init__(self, save_file):
+        self._save_file = save_file
+        self._saved = dict()
+
+        self.load()
+
+    def get(self, key):
+        return self._saved.get(key)
+
+    def is_computed(self, key):
+        return key in self._saved
+
+    def get_all(self):
+        return copy(self._saved)
+
+    def save(self, key, value):
+        if key not in self._saved:
+            self._saved[key] = value
+            with open(self._save_file, 'a') as f:
+                f.write(f"{key} {value}\n")
+
+    def load(self):
+        if os.path.exists(self._save_file):
+            with open(self._save_file, 'r') as inf:
+                for line in inf.readlines():
+                    key, value = line.split()
+                    self._saved[key] = float(value)
 
 
-class ProteinEvolution(Evolution, BaseFunction):
-    def __init__(self, population, mut_prob, mut_num, cros_prob, input_file, output_file, save_file, logger, checker=None):
+class ProteinEvolution(BaseEvolution, BaseFunction):
+    def __init__(self, population, mut_prob, mut_num, cros_prob, working_dir, logger, save_function, checker=None):
         super().__init__()
+        self._save_function = save_function
         self._population = population
         self._mut_prob = mut_prob
         self._mut_num = mut_num
         self._cros_prob = cros_prob
-        self._input_file = input_file
-        self._output_file = output_file
-        self._save_file = save_file
-        self._computed = dict()
         self._checker = checker
         self._logger = logger
+
+        self._working_dir = working_dir
+        Path(working_dir).mkdir(parents=True, exist_ok=True)
+        self._logger = logger(Path(working_dir) / 'logout')
 
     def mutation(self, attempts=1):
         """
@@ -242,49 +264,46 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._population = new_population
 
     def compute(self):
+        inp_fn = os.path.join(self._working_dir, 'inp')
+        out_fn = os.path.join(self._working_dir, 'out')
         proteins_for_computing = []
 
         # Find existing calcs
         for protein in self._population:
-            if protein.sequence not in self._computed:
+            if not self._save_function.is_computed(protein.sequence):
                 proteins_for_computing.append(protein)
 
         # Print to output file
-        with open(".tempfile", "w") as ouf:
+        tmp_out_fn = os.path.join(self._working_dir, '.out')
+        with open(tmp_out_fn, 'w') as ouf:
             for protein in proteins_for_computing:
                 for idx, g1, g2 in protein.get_differences():
-                    ouf.write(f"{g1}/{idx}/{g2} ")
-                ouf.write("\n")
-        os.rename(".tempfile", self._output_file)
+                    ouf.write(f'{g1}/{idx}/{g2} ')
+                ouf.write('\n')
+        os.rename(tmp_out_fn, out_fn)
 
         # Wait results
-        while not os.path.exists(self._input_file):
+        while not os.path.exists(inp_fn):
             time.sleep(1)
 
-            # Fake computing
+            # Simulate computing
             # from run_simulate_computing import run_simulate_computing
-            # run_simulate_computing()
+            # run_simulate_computing(tmp_out_=out_fn, tmp_in_=inp_fn)
 
         # Read results and save
-        with open(self._input_file) as inf:
+        with open(inp_fn) as inf:
             for protein in proteins_for_computing:
                 value = float(inf.readline())
-                self.save_computing(protein.sequence, value)
+                self._save_function.save(protein.sequence, value)
 
         # Write values to proteins
         for protein in self._population:
-            value = self._computed[protein.sequence]
+            value = self._save_function.get(protein.sequence)
             protein.set_value(value)
 
         # Remove out/inp filess
-        os.remove(self._output_file)
-        os.remove(self._input_file)
-
-    def save_computing(self, sequence, value):
-        if sequence not in self._computed:
-            self._computed[sequence] = value
-            with open(self._save_file, 'a') as f:
-                f.write(f"{sequence} {value}\n")
+        os.remove(out_fn)
+        os.remove(inp_fn)
 
     def is_stable_protein(self, protein):
         if self._checker is not None:
@@ -298,10 +317,11 @@ class ProteinEvolution(Evolution, BaseFunction):
     def generate_population(self, default_sequence, default_value, pop_size, from_computed=True):
         population = []
 
-        self.save_computing(default_sequence, default_value)
+        self._save_function.save(default_sequence, default_value)
 
         if from_computed:
-            for sequence, value in self._computed.items():
+            proteins = self._save_function.get_all()
+            for sequence, value in proteins.items():
                 protein = Protein.create_protein(sequence, default_sequence, value=value)
                 population.append(protein)
             population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
@@ -312,16 +332,11 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = population
 
-    def load_computed_proteins(self):
-        if os.path.exists(self._save_file):
-            with open(self._save_file, "r") as inf:
-                for line in inf.readlines():
-                    sequence, value = line.split()
-                    self._computed[sequence] = float(value)
-
-    def print_current_population(self):
+    def print_info(self, iter):
+        self._logger(f"Iteration: {iter}\n")
         for protein in self._population:
             self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
             for idx, g1, g2 in protein.get_differences():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
+        self._logger("\n")

@@ -1,28 +1,26 @@
 import configparser
 from functools import partial
-
 from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
 from evolution import *
 from logger import FileLogger
 from utils import *
+import threading
 
 # PARSING CONFIG
 config = configparser.ConfigParser()
 config.read('config.ini')
 
 pdb_file = config['PDB']['File']
-value = float(config['PDB']['VALUE'])
+value = float(config['PDB']['Value'])
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 mut_num = int(config['PARAMS']['MutNum'])
 eval_param = float(config['PARAMS']['EvalParam'])
+pop_num = int(config['PARAMS']['PopNum'])
 pop_size = int(config['PARAMS']['PopSize'])
-compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
-compute_lmb_ouf = config['COMPUTING']['ComputeLambdaOuf']
-computed_proteins_path = config['COMPUTING']['ComputedProteinsFileName']
+compute_lmb_dir = config['COMPUTING']['ComputeLambdaDir']
+computed_proteins_file = config['COMPUTING']['ComputedProteinsFileName']
 result_file_name = config['COMPUTING']['ResultFileName']
-
-logger = FileLogger("logout")
 
 # GENERATING CONSTRAINTS
 constraints = Constraints()
@@ -41,35 +39,45 @@ constraints.add(f3)
 constraints.add(f4)
 
 # COMPUTING
-population = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob,
-                              input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
-                              logger=logger, checker=constraints)
-population.load_computed_proteins()
-population.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=True)
+evolution = []
+computed_protein_saver = ProteinEvolutionSaver(computed_proteins_file)
+for i in range(pop_num):
+    working_dir = os.path.join(compute_lmb_dir, f'{i}')
+    cur_evolution = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob,
+                                     working_dir=working_dir, logger=FileLogger, save_function=computed_protein_saver, checker=constraints)
+    cur_evolution.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=True)
+    evolution.append(cur_evolution)
 
+
+def evolution_step(e):
+    e.mutation(attempts=4000)
+    e.crossover(attempts=4000)
+    e.compute()
+    e.selection(eval_param=0.05, save_n_best=3)
+
+
+logger = FileLogger('logout')
 iteration, step, stop_step = 1, 0, 5
-
 the_best_value = 0
 while step < stop_step:
     logger(f"Iteration: {iteration}\n")
 
-    population.mutation(attempts=4000)
-    population.crossover(attempts=4000)
-    population.compute()
+    tasks = [threading.Thread(target=evolution_step, args=(e,)) for e in evolution]
+    for task in tasks:
+        task.start()
 
-    population.selection(eval_param=0.05, save_n_best=3)
+    for task, e in zip(tasks, evolution):
+        task.join()
+        e.print_info(iteration)
 
-    cur_best_value = population.get_best_protein().value
+    cur_best_value = max([e.get_best_protein().value for e in evolution])
     if the_best_value < cur_best_value:
         the_best_value = cur_best_value
         step = 0
     else:
         step += 1
 
-    logger(f"Current population:\n")
-    population.print_current_population()
     logger(f"The best value: {the_best_value}\n"
-           f"Step/Stop {step}/{stop_step}\n")
-    logger("\n")
+           f"Step/Stop {step}/{stop_step}\n\n")
 
     iteration += 1
