@@ -14,13 +14,14 @@ pdb_file = config['PDB']['File']
 value = float(config['PDB']['Value'])
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
-mut_num = int(config['PARAMS']['MutNum'])
 eval_param = float(config['PARAMS']['EvalParam'])
 pop_num = int(config['PARAMS']['PopNum'])
 pop_size = int(config['PARAMS']['PopSize'])
+stop_step = int(config['PARAMS']['StopStep'])
 compute_lmb_dir = config['COMPUTING']['ComputeLambdaDir']
 computed_proteins_file = config['COMPUTING']['ComputedProteinsFileName']
 result_file_name = config['COMPUTING']['ResultFileName']
+population_from_computed = config['COMPUTING']['PopulationFromComputed']
 
 # GENERATING CONSTRAINTS
 constraints = Constraints()
@@ -39,14 +40,19 @@ constraints.add(f3)
 constraints.add(f4)
 
 # COMPUTING
-evolution = []
+from_computed = None
+if population_from_computed.lower() == 'true':
+    from_computed = True
+elif population_from_computed.lower() == 'false':
+    from_computed = False
 computed_protein_saver = ProteinEvolutionSaver(computed_proteins_file)
+evolution = []
 for i in range(pop_num):
     working_dir = os.path.join(compute_lmb_dir, f'{i}')
-    cur_evolution = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob,
-                                     working_dir=working_dir, logger=FileLogger, save_function=computed_protein_saver, checker=constraints)
-    cur_evolution.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=True)
-    evolution.append(cur_evolution)
+    e = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
+                         working_dir=working_dir, logger=FileLogger, save_function=computed_protein_saver, checker=constraints)
+    e.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=from_computed)
+    evolution.append(e)
 
 
 async def main():
@@ -57,14 +63,14 @@ async def main():
         e.selection(eval_param=0.05, save_n_best=3)
 
     logger = FileLogger('logout')
-    iteration, step, stop_step = 1, 0, 5
-    the_best_value = 0
+    iteration, step = 1, 0
+    the_best_value = 0.0
     while step < stop_step:
         logger(f"Iteration: {iteration}\n")
 
         await asyncio.gather(*(evolution_step(e) for e in evolution))
         for e in evolution:
-            e.print_info(iteration)
+            e.print_info(iter=iteration)
 
         cur_best_value = max([e.get_best_protein().value for e in evolution])
         if the_best_value < cur_best_value:

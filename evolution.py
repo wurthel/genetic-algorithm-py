@@ -96,12 +96,11 @@ class ProteinEvolutionSaver:
 
 
 class ProteinEvolution(BaseEvolution, BaseFunction):
-    def __init__(self, population, mut_prob, mut_num, cros_prob, working_dir, logger, save_function, checker=None):
+    def __init__(self, population, mut_prob, cros_prob, working_dir, logger, save_function, checker=None):
         super().__init__()
         self._save_function = save_function
         self._population = population
         self._mut_prob = mut_prob
-        self._mut_num = mut_num
         self._cros_prob = cros_prob
         self._checker = checker
         self._logger = logger
@@ -118,17 +117,14 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
         """
 
         new_population = []
-        num_of_changed = 0
+        changed_count = 0
         first_p = 0.6
         second_p = 0.4
 
-        for protein in self._population:
-            new_protein = copy(protein)
+        for old_protein in self._population:
+            new_protein = copy(old_protein)
             if random.random() < self._mut_prob:
-                num_of_changed += 1
-                attempt = 0
-                num_mut = 0
-                while num_mut < self._mut_num and attempt < attempts:
+                for attempt in range(attempts):
                     position = random.choice(tuple(PositionsSetUnion))
                     old_gene = new_protein.genes[position - 1]
                     new_value = old_gene.value
@@ -171,14 +167,13 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
                     new_protein.update_gene(position - 1, new_gene)
 
                     if self.is_stable_protein(new_protein):
-                        num_mut += 1
+                        changed_count += 1
+                        break
                     else:
-                        # Restore old gene
-                        new_protein.update_gene(position - 1, old_gene)
-                    attempt += 1
+                        new_protein.update_gene(position - 1, old_gene)  # Restore old gene
             new_population.append(new_protein)
 
-        self._logger(f"Mutation: I will try to change {num_of_changed} proteins... {num_of_changed} proteins changed\n")
+        self._logger(f"Mutation: {changed_count} proteins have been modified\n")
 
         self._population = new_population
 
@@ -197,33 +192,27 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
             new_population.append(for_cross.pop())
 
         random.shuffle(for_cross)
+        changed_count = 0
 
-        need = 0
-        real = 0
-
-        pair_cros_prob = 0.5  # crossover pair probability
-        for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
-            need += 2
-            new_protein1, new_protein2 = protein1, protein2
+        for old_protein1, old_protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
+            new_protein1, new_protein2 = old_protein1, old_protein2
             for attempt in range(attempts):
                 attempt_protein1, attempt_protein2 = copy(new_protein1), copy(new_protein2)
                 for i, (gene1, gene2) in enumerate(zip(attempt_protein1.genes, attempt_protein2.genes)):
-                    if random.random() < pair_cros_prob:
-                        new_gene1 = Gene(value=gene2.value)
-                        new_gene2 = Gene(value=gene1.value)
-                        attempt_protein1.update_gene(i, new_gene1)
-                        attempt_protein2.update_gene(i, new_gene2)
+                    if random.random() < 0.5:
+                        attempt_protein1.update_gene(i, Gene(value=gene2.value))
+                        attempt_protein2.update_gene(i, Gene(value=gene1.value))
 
                 if self.is_stable_protein(attempt_protein1) and self.is_stable_protein(attempt_protein2):
                     new_protein1 = attempt_protein1
                     new_protein2 = attempt_protein2
-                    real += 2
+                    changed_count += 2
                     break
 
             new_population.append(new_protein1)
             new_population.append(new_protein2)
 
-        self._logger(f"Crossover: I will try to change {need} proteins... {real} proteins changed\n")
+        self._logger(f'Crossover: {changed_count} proteins have been modified\n')
 
         self._population = new_population
 
@@ -333,7 +322,7 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
         self._population = population
 
     def print_info(self, iter):
-        self._logger(f"Iteration: {iter}\n")
+        self._logger(f"Population after {iter} evolution step:\n")
         for protein in self._population:
             self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
             for idx, g1, g2 in protein.get_differences():
