@@ -1,11 +1,11 @@
+import asyncio
 import os
 import random
-import time
 from abc import abstractmethod, ABC
 from copy import copy
+from pathlib import Path
 
 from data import Protein, Gene
-from pathlib import Path
 
 PullAPlus = "STNQCWYEDH"
 PullBPlus = "PGAVILMFEDH"
@@ -263,7 +263,7 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
 
         self._population = new_population
 
-    def compute(self):
+    async def compute(self):
         inp_fn = os.path.join(self._working_dir, 'inp')
         out_fn = os.path.join(self._working_dir, 'out')
         proteins_for_computing = []
@@ -284,7 +284,7 @@ class ProteinEvolution(BaseEvolution, BaseFunction):
 
         # Wait results
         while not os.path.exists(inp_fn):
-            time.sleep(1)
+            await asyncio.sleep(5)
 
             # Simulate computing
             # from run_simulate_computing import run_simulate_computing

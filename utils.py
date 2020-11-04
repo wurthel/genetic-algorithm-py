@@ -1,6 +1,7 @@
+from math import radians
+
 import numpy as np
 from scipy.linalg import expm, norm
-from math import radians
 
 vdwr = {
     "H": 1.10,

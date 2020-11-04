@@ -1,10 +1,10 @@
 import configparser
 from functools import partial
+
 from constraints import Constraints, constraint_included, constraint_distances, constraint_max_charge, constraint_max_num_changes
 from evolution import *
 from logger import FileLogger
 from utils import *
-import threading
 
 # PARSING CONFIG
 config = configparser.ConfigParser()
@@ -49,35 +49,34 @@ for i in range(pop_num):
     evolution.append(cur_evolution)
 
 
-def evolution_step(e):
-    e.mutation(attempts=4000)
-    e.crossover(attempts=4000)
-    e.compute()
-    e.selection(eval_param=0.05, save_n_best=3)
+async def main():
+    async def evolution_step(e):
+        e.mutation(attempts=4000)
+        e.crossover(attempts=4000)
+        await e.compute()
+        e.selection(eval_param=0.05, save_n_best=3)
+
+    logger = FileLogger('logout')
+    iteration, step, stop_step = 1, 0, 5
+    the_best_value = 0
+    while step < stop_step:
+        logger(f"Iteration: {iteration}\n")
+
+        await asyncio.gather(*(evolution_step(e) for e in evolution))
+        for e in evolution:
+            e.print_info(iteration)
+
+        cur_best_value = max([e.get_best_protein().value for e in evolution])
+        if the_best_value < cur_best_value:
+            the_best_value = cur_best_value
+            step = 0
+        else:
+            step += 1
+
+        logger(f"The best value: {the_best_value}\n"
+               f"Step/Stop {step}/{stop_step}\n\n")
+
+        iteration += 1
 
 
-logger = FileLogger('logout')
-iteration, step, stop_step = 1, 0, 5
-the_best_value = 0
-while step < stop_step:
-    logger(f"Iteration: {iteration}\n")
-
-    tasks = [threading.Thread(target=evolution_step, args=(e,)) for e in evolution]
-    for task in tasks:
-        task.start()
-
-    for task, e in zip(tasks, evolution):
-        task.join()
-        e.print_info(iteration)
-
-    cur_best_value = max([e.get_best_protein().value for e in evolution])
-    if the_best_value < cur_best_value:
-        the_best_value = cur_best_value
-        step = 0
-    else:
-        step += 1
-
-    logger(f"The best value: {the_best_value}\n"
-           f"Step/Stop {step}/{stop_step}\n\n")
-
-    iteration += 1
+asyncio.run(main())
