@@ -15,7 +15,7 @@ value = float(config['PDB']['Value'])
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 eval_param = float(config['PARAMS']['EvalParam'])
-pop_num = int(config['PARAMS']['PopNum'])
+pop_count = int(config['PARAMS']['PopCount'])
 pop_size = int(config['PARAMS']['PopSize'])
 stop_step = int(config['PARAMS']['StopStep'])
 compute_lmb_dir = config['COMPUTING']['ComputeLambdaDir']
@@ -47,7 +47,7 @@ elif population_from_computed.lower() == 'false':
     from_computed = False
 computed_protein_saver = ProteinEvolutionSaver(computed_proteins_file)
 evolution = []
-for i in range(pop_num):
+for i in range(pop_count):
     working_dir = os.path.join(compute_lmb_dir, f'{i}')
     e = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
                          working_dir=working_dir, logger=FileLogger, save_function=computed_protein_saver, checker=constraints)
