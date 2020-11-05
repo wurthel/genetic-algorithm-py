@@ -8,7 +8,6 @@ source venv/bin/activate
 ## Install dependencies
 ``` python
 python install -r requirements.txt
-python run_GA.py
 ```
 
 ## Usage

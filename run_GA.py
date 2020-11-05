@@ -48,7 +48,7 @@ elif population_from_computed.lower() == 'false':
 computed_protein_saver = ProteinEvolutionSaver(computed_proteins_file)
 evolution = []
 for i in range(pop_count):
-    working_dir = os.path.join(compute_lmb_dir, f'{i}')
+    working_dir = os.path.join(compute_lmb_dir, f'{i + 1}')
     e = ProteinEvolution(population=None, mut_prob=mut_prob, cros_prob=cros_prob,
                          working_dir=working_dir, logger=FileLogger, save_function=computed_protein_saver, checker=constraints)
     e.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=from_computed)
